@@ -220,12 +220,14 @@ public class ShadingDiagnosticTests
 
     private class TestInput : Relander.Core.Interfaces.IGameInput
     {
-        public int MouseX => 512;
-        public int MouseY => 512;
-        public bool LeftButton => false;
-        public bool MiddleButton => false;
-        public bool RightButton => false;
-        public bool EscapePressed => false;
+        public bool YawLeft { get; set; }
+        public bool YawRight { get; set; }
+        public bool PitchUp { get; set; }
+        public bool PitchDown { get; set; }
+        public bool Fire { get; set; }
+        public bool Thrust { get; set; }
+        public bool Hover { get; set; }
+        public bool EscapePressed { get; set; }
     }
 
     private class TestScreen : Relander.Core.Interfaces.IScreen

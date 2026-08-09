@@ -5,7 +5,7 @@ using Relander.Core.Interfaces;
 namespace Relander.Core.Engine;
 
 /// <summary>
-/// Player ship control: mouse input, physics, collision detection, and ship drawing.
+/// Player ship control: keyboard input, physics, collision detection, and ship drawing.
 /// Based on MoveAndDrawPlayer from Lander.arm:1734-2600.
 /// </summary>
 public class PlayerController
@@ -13,6 +13,10 @@ public class PlayerController
     private readonly GameState _state;
     private readonly GraphicsBuffers _buffers;
     private readonly LandscapeGenerator _landscape;
+
+    // Yaw/pitch delta per frame when key held (full circle = 0x40000000 * 4)
+    private const int YAW_DELTA = 0x08000000;
+    private const int PITCH_DELTA = 0x06000000;
 
     public PlayerController(GameState state, GraphicsBuffers buffers, LandscapeGenerator landscape)
     {
@@ -31,9 +35,8 @@ public class PlayerController
         if (_state.PlayingGame == 0)
             return true; // Crash animation — skip player update
 
-        // --- Read mouse and compute rotation ---
-        ReadMouse(input);
-        UpdateAnglesFromMouse();
+        // --- Read keyboard and update orientation ---
+        ReadKeyboardInput(input);
         ComputeRotationMatrix();
         UpdatePhysics();
 
@@ -46,13 +49,13 @@ public class PlayerController
         return alive;
     }
 
-    private void ReadMouse(IGameInput input)
+    private void ReadKeyboardInput(IGameInput input)
     {
-        // Set fuel burn rate from buttons
+        // Set fuel burn rate from keys
         int burnRate = 0;
-        if (input.RightButton) burnRate |= 1;   // Fire
-        if (input.MiddleButton) burnRate |= 2;  // Hover
-        if (input.LeftButton) burnRate |= 4;    // Full thrust
+        if (input.Fire) burnRate |= 1;    // Fire (N)
+        if (input.Hover) burnRate |= 2;   // Hover (H)
+        if (input.Thrust) burnRate |= 4;  // Full thrust (M)
 
         _state.FuelBurnRate = burnRate;
 
@@ -60,89 +63,18 @@ public class PlayerController
         if (_state.FuelLevel <= 0)
             _state.FuelBurnRate = 0;
 
-        // Store mouse position for angle computation
-        int mx = global::System.Math.Clamp(input.MouseX, 0, 1023);
-        int my = global::System.Math.Clamp(input.MouseY, 0, 1023);
+        // Keyboard yaw control (A/D)
+        if (input.YawLeft)
+            _state.ShipDirection -= YAW_DELTA;
+        if (input.YawRight)
+            _state.ShipDirection += YAW_DELTA;
 
-        // Convert to -512..+511 range and scale up
-        int scaledX = (mx - 512) << 22;
-        int scaledY = (512 - my) << 22;
-
-        // Convert to polar coordinates using arctan and sqrt tables
-        _mouseAngle = GetAngle(scaledX, scaledY);
-        _mouseDistance = GetDistance(scaledX, scaledY);
-
-        // Cap distance
-        if ((uint)_mouseDistance > 0x40000000)
-            _mouseDistance = 0x3FFFFFFF;
-        _mouseDistance <<= 1;  // Scale to 0..&7FFFFFFE
-    }
-
-    private int _mouseAngle;
-    private int _mouseDistance;
-
-    // ---- Angle/polar coordinate computation ----
-
-    private static int GetAngle(int x, int y)
-    {
-        // Determine quadrant and compute ratio
-        bool xNeg = x < 0, yNeg = y < 0;
-        uint ax = (uint)(xNeg ? -x : x);
-        uint ay = (uint)(yNeg ? -y : y);
-        bool flipped = ax < ay;
-
-        uint numerator = flipped ? ax : ay;
-        uint denominator = flipped ? ay : ax;
-
-        // Compute ratio * 128 for arctan lookup
-        int ratio = denominator != 0 ? (int)(numerator * 128 / denominator) : 0;
-        if (ratio >= 128) ratio = 127;
-        int angle = ArctanTable.Data[ratio];
-
-        // Adjust quadrant
-        if (flipped)
-            angle = 0x40000000 - angle;  // 90 degrees - angle
-        if (xNeg)
-            angle = unchecked((int)(0x80000000 - (uint)angle));  // 180 degrees - angle
-        if (!yNeg && angle < 0)
-            angle += unchecked((int)0x80000000);
-        // Full circle is 0x80000000 (needs wrapping)
-
-        return angle;
-    }
-
-    private static int GetDistance(int x, int y)
-    {
-        // Compute x^2 + y^2 then sqrt via lookup
-        long xl = x, yl = y;
-        long sum = (xl * xl + yl * yl) >> 24;  // Scale down
-        if (sum < 0) sum = long.MaxValue >> 24;
-        int index = (int)((ulong)sum >> 20);
-        if (index >= SquareRootTable.Length) index = SquareRootTable.Length - 1;
-        if (index < 0) index = 0;
-        return SquareRootTable.Data[index];
-    }
-
-    // ---- Angle damping ----
-
-    private void UpdateAnglesFromMouse()
-    {
-        int shipDir = _state.ShipDirection;
-        int shipPitch = _state.ShipPitch;
-
-        // Difference between current direction and mouse angle
-        int diffDir = shipDir - _mouseAngle;
-        if (diffDir < -0x30000000) diffDir = -0x30000001;
-        if (diffDir > 0x30000000) diffDir = 0x30000001;
-
-        // Difference between current pitch and mouse distance
-        int diffPitch = shipPitch - _mouseDistance;
-        if (diffPitch > 0x30000000) diffPitch = 0x30000001;
-        if (diffPitch < -0x30000000) diffPitch = -0x30000001;
-
-        // Apply damping: new = old - diff / 2
-        _state.ShipDirection = shipDir - (diffDir >> 1);
-        _state.ShipPitch = shipPitch - (diffPitch >> 1);
+        // Keyboard pitch control (W/S)
+        // Pitch up = nose goes down (more negative y) = increase pitch angle
+        if (input.PitchUp)
+            _state.ShipPitch += PITCH_DELTA;
+        if (input.PitchDown)
+            _state.ShipPitch -= PITCH_DELTA;
     }
 
     // ---- Rotation matrix (Lander.arm:6311-6562) ----

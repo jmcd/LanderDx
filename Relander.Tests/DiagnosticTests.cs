@@ -11,13 +11,15 @@ namespace Relander.Tests;
 [TestFixture]
 public class DiagnosticTests
 {
-    private class TestInput : IGameInput
+    private class TestInput : Relander.Core.Interfaces.IGameInput
     {
-        public int MouseX { get; set; } = 512;
-        public int MouseY { get; set; } = 512;
-        public bool LeftButton { get; set; }
-        public bool MiddleButton { get; set; }
-        public bool RightButton { get; set; }
+        public bool YawLeft { get; set; }
+        public bool YawRight { get; set; }
+        public bool PitchUp { get; set; }
+        public bool PitchDown { get; set; }
+        public bool Fire { get; set; }
+        public bool Thrust { get; set; }
+        public bool Hover { get; set; }
         public bool EscapePressed { get; set; }
     }
 
@@ -97,7 +99,7 @@ public class DiagnosticTests
     {
         var random = new RandomGenerator(42);
         var screen = new TestScreen();
-        var input = new TestInput { MouseX = 700, MouseY = 300 }; // Off-center mouse
+        var input = new TestInput { YawRight = true, PitchUp = true }; // Off-center mouse
         var engine = new GameEngine(random, screen);
 
         engine.StartNewGame();
@@ -287,7 +289,7 @@ public class DiagnosticTests
     {
         var random = new RandomGenerator(42);
         var screen = new TestScreen();
-        var input = new TestInput { LeftButton = true, MouseY = 200 };  // Thrust + pitch up
+        var input = new TestInput { Thrust = true, PitchUp = true };  // Thrust + pitch up
         var engine = new GameEngine(random, screen);
 
         engine.StartNewGame();

@@ -11,13 +11,15 @@ namespace Relander.Tests;
 [TestFixture]
 public class GameEngineIntegrationTests
 {
-    private class TestInput : IGameInput
+    private class TestInput : Relander.Core.Interfaces.IGameInput
     {
-        public int MouseX { get; set; } = 512;   // Center
-        public int MouseY { get; set; } = 512;   // Center
-        public bool LeftButton { get; set; }
-        public bool MiddleButton { get; set; }
-        public bool RightButton { get; set; }
+        public bool YawLeft { get; set; }
+        public bool YawRight { get; set; }
+        public bool PitchUp { get; set; }
+        public bool PitchDown { get; set; }
+        public bool Fire { get; set; }
+        public bool Thrust { get; set; }
+        public bool Hover { get; set; }
         public bool EscapePressed { get; set; }
     }
 
@@ -147,7 +149,7 @@ public class GameEngineIntegrationTests
     {
         var random = new Relander.Core.Engine.RandomGenerator(3);
         var screen = new TestScreen();
-        var input = new TestInput { LeftButton = true };  // Full thrust
+        var input = new TestInput { Thrust = true };  // Full thrust
         var engine = new GameEngine(random, screen);
 
         engine.StartNewGame();
@@ -168,7 +170,7 @@ public class GameEngineIntegrationTests
     {
         var random = new Relander.Core.Engine.RandomGenerator(5);
         var screen = new TestScreen();
-        var input = new TestInput { LeftButton = true };
+        var input = new TestInput { Thrust = true };
         var engine = new GameEngine(random, screen);
 
         engine.StartNewGame();

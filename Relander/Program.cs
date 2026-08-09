@@ -20,7 +20,7 @@ public static class Program
         // Create game engine
         var random = new RandomGenerator();
         var screen = new RaylibScreen(GAME_WIDTH, GAME_HEIGHT);
-        var input = new RaylibInput(GAME_WIDTH * SCALE, GAME_HEIGHT * SCALE);
+        var input = new RaylibInput();
         var engine = new GameEngine(random, screen);
 
         // Start the game
