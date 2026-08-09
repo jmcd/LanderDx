@@ -309,13 +309,14 @@ public class PlayerController
 
     private void DrawShip()
     {
-        // The ship is drawn at a fixed position relative to the camera:
-        // xObject = xPlayer - xCamera = 0 (since camera follows x)
-        // yObject = yPlayer - yCamera
-        // zObject = zPlayer - zCamera = -CAMERA_PLAYER_Z
-        int objX = _state.XPlayer - _state.XCamera;
+        // The ship is always drawn at screen center:
+        // x = 0 (camera follows ship, ship centered horizontally)
+        // y = yPlayer - yCamera (height above ground, 0 when high up)
+        // z = LANDSCAPE_Z_MID (fixed depth at middle of landscape)
+        //   LANDSCAPE_Z_MID = LANDSCAPE_Z - CAMERA_PLAYER_Z = 15 * TILE_SIZE
+        int objX = 0;
         int objY = _state.YPlayer - _state.YCamera;
-        int objZ = _state.ZPlayer - _state.ZCamera;
+        int objZ = FixedPoint.LANDSCAPE_Z_MID;
 
         // Draw the player ship as a rotating 3D object
         DrawObject(ObjectBlueprints.PlayerShip, objX, objY, objZ, isRotating: true);

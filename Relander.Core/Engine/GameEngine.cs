@@ -219,33 +219,47 @@ public class GameEngine
 
     private void DrawLandscapeAndBuffers()
     {
-        // Camera-aligned tile position for the back-left corner
-        int xCameraTile = (_state.XCamera - FixedPoint.LANDSCAPE_X) & unchecked((int)0xFF000000);
+        // Camera-aligned tile positions
+        int xCameraTile = _state.XCamera & unchecked((int)0xFF000000);
         int zCameraTile = _state.ZCamera & unchecked((int)0xFF000000);
+        int zFrac = _state.ZCamera - zCameraTile;
+
+        // Starting x for the back-left corner:
+        // worldX = xCameraTile - LANDSCAPE_X (then + col * TILE_SIZE in the loop)
+        int startX = xCameraTile - FixedPoint.LANDSCAPE_X;
+
+        // Starting z for the back row (LANDSCAPE_Z - fractional part of camera z)
+        // This is the z value used for PROJECTION, not the world z for altitude
+        int zRow = FixedPoint.LANDSCAPE_Z - zFrac;
+
+        // World z for altitude lookup (starts at camera tile z, goes down each row)
+        int worldZBase = zCameraTile;
 
         // For each tile corner row (back to front)
         for (int row = 0; row < FixedPoint.TILES_Z; row++)
         {
             _state.TileCornerRow = row;
 
+            // Projection z for this row (decreases by TILE_SIZE each row toward front)
+            int projZ = zRow;
+
             // For each tile corner column (left to right)
             for (int col = 0; col < FixedPoint.TILES_X; col++)
             {
-                int worldX = xCameraTile + col * FixedPoint.TILE_SIZE;
-                int worldZ = zCameraTile - row * FixedPoint.TILE_SIZE;
+                int worldX = startX + col * FixedPoint.TILE_SIZE;
+                int worldZ = worldZBase;
 
-                // Get altitude at this corner
+                // Get altitude at this corner (using world coordinates)
                 int alt = _landscape.GetAltitude(worldX, worldZ);
 
-                // Camera-relative position
+                // Camera-relative x and y (z is the landscape row z, not world z)
                 int relX = worldX - _state.XCamera;
                 int relY = alt - _state.YCamera;
-                int relZ = worldZ - _state.ZCamera;
 
-                // Project corner to screen
-                if (!Projection.Project(relX, relY, relZ, out int sx, out int sy))
+                // Project using the landscape row z (NOT worldZ - zCamera)
+                if (!Projection.Project(relX, relY, projZ, out int sx, out int sy))
                 {
-                    _curRowCorners[col] = (-1, -1);  // Off-screen marker
+                    _curRowCorners[col] = (-1, -1);
                     continue;
                 }
                 _curRowCorners[col] = (sx, sy);
@@ -253,28 +267,29 @@ public class GameEngine
                 // Draw tile if we have all 4 corners (past first row and column)
                 if (row > 0 && col > 0)
                 {
-                    var c00 = _prevRowCorners[col - 1];  // Previous row, previous col
-                    var c10 = _prevRowCorners[col];      // Previous row, current col
-                    var c01 = _curRowCorners[col - 1];   // Current row, previous col
-                    var c11 = _curRowCorners[col];       // Current row, current col
+                    var c00 = _prevRowCorners[col - 1];
+                    var c10 = _prevRowCorners[col];
+                    var c01 = _curRowCorners[col - 1];
+                    var c11 = _curRowCorners[col];
 
-                    // Skip if any corner is off-screen
                     if (c00.x < 0 || c10.x < 0 || c01.x < 0 || c11.x < 0) continue;
 
-                    // Compute tile colour
                     int colour = _landscape.GetTileColour(row);
                     byte vidc = (byte)(colour & 0xFF);
 
-                    // Draw tile as two triangles (quad split along diagonal)
                     _rasterizer.DrawTriangle(c00.x, c00.y, c10.x, c10.y, c11.x, c11.y, vidc);
                     _rasterizer.DrawTriangle(c00.x, c00.y, c11.x, c11.y, c01.x, c01.y, vidc);
                 }
             }
 
-            // Swap corner arrays for next row
+            // Swap corner arrays
             var temp = _prevRowCorners;
             _prevRowCorners = _curRowCorners;
             _curRowCorners = temp;
+
+            // Advance to next row: zRow and worldZBase decrease by one tile
+            zRow -= FixedPoint.TILE_SIZE;
+            worldZBase -= FixedPoint.TILE_SIZE;
 
             // Draw graphics buffer for objects 2 rows behind
             if (row >= 2)

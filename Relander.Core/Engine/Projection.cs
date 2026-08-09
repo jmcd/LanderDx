@@ -15,6 +15,10 @@ public static class Projection
     /// <summary>
     /// Project a 3D camera-relative point to screen coordinates.
     /// Returns true if the point is in front of the camera and on screen.
+    ///
+    /// Uses the same math as the original: the 10-bit ratio from shift-and-subtract
+    /// division is (x/z) * 1024, and pixel offset = ratio >> 2 = (x/z) * 256.
+    /// So: screenX = 160 + x * 256 / z, screenY = 64 + y * 256 / z
     /// </summary>
     public static bool Project(int x, int y, int z, out int screenX, out int screenY)
     {
@@ -29,16 +33,13 @@ public static class Projection
         if (z <= 0)
             return false;
 
-        // Perspective divide: screenX = 160 + x/z, screenY = 64 + y/z
+        // Pixel offset from center: (x/z) * 256 pixels directly
         // Use 64-bit intermediate to avoid overflow
-        long scaledX = (long)x * 256;  // Scale for sub-pixel precision
-        long scaledY = (long)y * 256;
+        int offsetX = (int)((long)x * 256 / z);
+        int offsetY = (int)((long)y * 256 / z);
 
-        int px = (int)(scaledX / z) + SCREEN_CENTER_X * 256;
-        int py = (int)(scaledY / z) + SCREEN_CENTER_Y * 256;
-
-        screenX = px / 256;
-        screenY = py / 256;
+        screenX = SCREEN_CENTER_X + offsetX;
+        screenY = SCREEN_CENTER_Y + offsetY;
 
         return true;
     }
