@@ -427,18 +427,44 @@ public class GameEngine
 
     private void RenderScoreBar()
     {
-        // Draw a simple fuel bar in rows 0-1 of the play area
-        byte green = VidcColour.Encode(0, 12, 0);
-        _framebuffer.AsSpan(0, 320).Fill(green);
-        _framebuffer.AsSpan(320, 320).Fill(green);
-
-        // Draw fuel level bar on row 2
+        // 1. Fuel level bar on rows 2-4
         int fuelPixels = _state.FuelLevel >> 4;
         if (fuelPixels > 320) fuelPixels = 320;
-        byte orange = VidcColour.Encode(12, 8, 0);
-        _framebuffer.AsSpan(640, global::System.Math.Min(fuelPixels, 320)).Fill(orange);
-        _framebuffer.AsSpan(960, 320).Fill(0);
+        byte fuelColor = VidcColour.Encode(12, 8, 0); // Orange fuel bar
+        int len = global::System.Math.Min(fuelPixels, 320);
+        if (len > 0)
+        {
+            _framebuffer.AsSpan(2 * 320, len).Fill(fuelColor);
+            _framebuffer.AsSpan(3 * 320, len).Fill(fuelColor);
+            _framebuffer.AsSpan(4 * 320, len).Fill(fuelColor);
+        }
+
+        // 2. Text header on text row 1 (pixel y = 8)
+        byte white = VidcColour.Encode(15, 15, 15);
+        byte yellow = VidcColour.Encode(15, 15, 0);
+        byte cyan = VidcColour.Encode(0, 15, 15);
+
+        // Col 0: Bullet count / current score
+        string scoreStr = _state.CurrentScore.ToString();
+        SystemFont.DrawString(_framebuffer, 320, 0, 8, scoreStr, white);
+
+        // Col 30 (x = 240): Remaining lives
+        string livesStr = _state.RemainingLives.ToString();
+        SystemFont.DrawString(_framebuffer, 320, 240, 8, livesStr, yellow);
+
+        // Col 35 (x = 280): High score
+        string highStr = _state.HighScore.ToString();
+        SystemFont.DrawString(_framebuffer, 320, 280, 8, highStr, cyan);
+
+        // 3. Game Over text message when lives <= 0
+        if (_state.RemainingLives <= 0)
+        {
+            byte red = VidcColour.Encode(15, 0, 0);
+            SystemFont.DrawString(_framebuffer, 320, 120, 112, "GAME OVER", red);
+        }
     }
+
+
 
     private void CopyToScreen()
     {

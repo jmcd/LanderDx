@@ -314,5 +314,5 @@ The conversion uses a single `byte[320×256]` framebuffer. The top 16 pixel rows
 2. **Frame rate**: Unlocked (original ran at approximately 12.5 FPS tied to VSync on the Archimedes)
 3. **Sound**: None (original had no sound either)
 4. **Rock dropping**: Not yet implemented (score threshold logic exists but no rock spawning)
-5. **Score bar text**: Not rendered (only fuel bar shown)
+
 

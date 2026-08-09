@@ -248,4 +248,95 @@ public class RenderingTests
         byte vidc = VidcColour.Encode(15, 15, 15);
         Assert.That(vidc, Is.EqualTo(0xFF));
     }
+
+    // ---- SystemFont tests ----
+
+    [Test]
+    public void SystemFont_DrawChar_RendersGlyphPixels()
+    {
+        Array.Clear(_framebuffer);
+        SystemFont.DrawChar(_framebuffer, 320, 10, 10, 'A', 255);
+
+        int coloredCount = 0;
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 8; c++)
+            {
+                if (_framebuffer[(10 + r) * 320 + (10 + c)] == 255)
+                    coloredCount++;
+            }
+        }
+
+        Assert.That(coloredCount, Is.GreaterThan(5), "Character 'A' should render pixels");
+    }
+
+    [Test]
+    public void SystemFont_DrawString_RendersMultipleChars()
+    {
+        Array.Clear(_framebuffer);
+        SystemFont.DrawString(_framebuffer, 320, 0, 8, "1000", 255);
+
+        int coloredCount = _framebuffer.Count(b => b == 255);
+        Assert.That(coloredCount, Is.GreaterThan(20), "String '1000' should render font pixels");
+    }
+
+    [Test]
+    public void SystemFont_DrawString_ClipsToBounds_DoesNotCrash()
+    {
+        Array.Clear(_framebuffer);
+        Assert.DoesNotThrow(() =>
+            SystemFont.DrawString(_framebuffer, 320, 315, 235, "GAME OVER", 255));
+    }
+
+    [Test]
+    public void GameEngine_RenderScoreBar_RendersHeaderAndFuelBar()
+    {
+        var random = new RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+
+        engine.StartNewGame();
+        engine.Update(new TestInput());
+
+        // Check text row 8 for bullet score text, lives, and high score
+        int textPixels = 0;
+        for (int x = 0; x < 320; x++)
+        {
+            if (screen.GetPlayPixel(x, 8) != 0) textPixels++;
+        }
+
+        Assert.That(textPixels, Is.GreaterThan(10), "Score bar text header should render non-zero text pixels");
+    }
+
+    private class TestScreen : Relander.Core.Interfaces.IScreen
+    {
+        private readonly byte[] _fb = new byte[320 * 256];
+        public int Width => 320;
+        public int Height => 240;
+        public Span<byte> GetFramebuffer() => _fb;
+        public void Present() { }
+        public void Clear(byte color = 0) => Array.Clear(_fb);
+        public byte GetPlayPixel(int x, int y) => _fb[(y + 16) * 320 + x];
+    }
+
+    private class TestInput : Relander.Core.Interfaces.IGameInput
+    {
+        public bool Thrust => false;
+        public bool Hover => false;
+        public bool Left => false;
+        public bool Right => false;
+        public bool Up => false;
+        public bool Down => false;
+        public bool Fire => false;
+        public bool EscapePressed => false;
+        public bool Reverse => false;
+        public bool YawLeft => false;
+        public bool YawRight => false;
+        public bool PitchUp => false;
+        public bool PitchDown => false;
+    }
 }
+
+
+
+
