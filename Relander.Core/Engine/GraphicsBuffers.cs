@@ -118,17 +118,25 @@ public class GraphicsBuffers
     }
 
     /// <summary>
-    /// Get a read-only span over a specific buffer's data.
+    /// Get a read-only span over a specific buffer's data (up to the terminator).
     /// </summary>
     public ReadOnlySpan<int> GetBufferData(int index)
     {
         if (index < 0 || index >= BufferCount) return [];
-        return _buffers[index].AsSpan(0, _endIndices[index] > 0 ? _endIndices[index] : 0);
+        var buf = _buffers[index];
+        // Scan for the terminator
+        for (int i = 0; i < buf.Length; i++)
+            if (buf[i] == COMMAND_TERMINATOR)
+                return buf.AsSpan(0, i);
+        return [];  // No terminator found = empty
     }
 
     public void Clear()
     {
         for (int i = 0; i < BufferCount; i++)
+        {
             _endIndices[i] = 0;
+            _buffers[i][0] = COMMAND_TERMINATOR;  // Ensure empty read
+        }
     }
 }

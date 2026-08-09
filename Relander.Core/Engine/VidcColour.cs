@@ -28,9 +28,10 @@ public static class VidcColour
 
         int result = 0;
 
-        // Bits 1-0: sum of bottom bits
+        // Bits 1-0: OR of bottom two bits from each channel
         result |= (r & 1) | (g & 1) | (b & 1);        // bit 0
-        result |= ((r >> 1) & 1) | ((g >> 1) & 1) | ((b >> 1) & 1);  // bit 1 (shifted)
+        int bit1 = ((r >> 1) & 1) | ((g >> 1) & 1) | ((b >> 1) & 1);
+        result |= bit1 << 1;                           // bit 1
 
         // Bit 2: red bit 2
         if ((r & 4) != 0) result |= 1 << 2;
@@ -80,9 +81,10 @@ public static class VidcColour
     public static (byte r, byte g, byte b) DecodeToRgb24(byte vidc)
     {
         // Extract 4-bit channels from VIDC byte
-        int r4 = ((vidc >> 4) & 8) | ((vidc >> 2) & 4) | ((vidc >> 1) & 2) | (vidc & 1);
-        int g4 = ((vidc >> 6) & 8) | ((vidc >> 5) & 4) | ((vidc >> 1) & 2) | (vidc & 1);
-        int b4 = ((vidc >> 7) & 8) | ((vidc >> 3) & 4) | ((vidc >> 1) & 2) | (vidc & 1);
+        // Each bit position in VIDC maps to a specific channel bit
+        int r4 = ((vidc >> 4) & 1) << 3 | ((vidc >> 2) & 1) << 2 | ((vidc >> 1) & 1) << 1 | (vidc & 1);
+        int g4 = ((vidc >> 6) & 1) << 3 | ((vidc >> 5) & 1) << 2 | ((vidc >> 1) & 1) << 1 | (vidc & 1);
+        int b4 = ((vidc >> 7) & 1) << 3 | ((vidc >> 3) & 1) << 2 | ((vidc >> 1) & 1) << 1 | (vidc & 1);
 
         // Scale 4-bit to 8-bit (multiply by 17: n << 4 | n)
         byte r8 = (byte)((r4 << 4) | r4);

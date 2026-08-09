@@ -276,8 +276,8 @@ public class PlayerController
         if (safeAlt - y < FixedPoint.SAFE_HEIGHT)
         {
             // Check for landing on launchpad
-            if (global::System.Math.Abs(x) < FixedPoint.LAUNCHPAD_SIZE / 2 &&
-                global::System.Math.Abs(z) < FixedPoint.LAUNCHPAD_SIZE / 2)
+            if ((uint)x < FixedPoint.LAUNCHPAD_SIZE &&
+                (uint)z < FixedPoint.LAUNCHPAD_SIZE)
             {
                 // Over the launchpad — check landing speed
                 int totalSpeed = global::System.Math.Abs(vx) + global::System.Math.Abs(vy) + global::System.Math.Abs(vz);
