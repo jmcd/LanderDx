@@ -326,12 +326,8 @@ public class PlayerController
 
     private void DrawObject(ObjectBlueprint blueprint, int objX, int objY, int objZ, bool isRotating)
     {
-        // Scale up coordinates
-        int scale = GetScaleFactor(objX, objY, objZ);
-        int sx = objX << scale;
-        int sy = objY << scale;
-        int sz = objZ << scale;
-
+        // The original uses UNSCALED object position + rotated vertex for world coords,
+        // then ProjectVertexOntoScreen handles precision scaling internally.
         // Project each vertex
         var projectedVertices = new (int x, int y, int shadowX, int shadowY)[blueprint.VertexCount];
 
@@ -354,10 +350,10 @@ public class PlayerController
                 rvz = vert.Z;
             }
 
-            // World-space vertex
-            int wx = rvx + sx;
-            int wy = rvy + sy;
-            int wz = rvz + sz;
+            // World-space vertex (unscaled — Projection handles scaling)
+            int wx = rvx + objX;
+            int wy = rvy + objY;
+            int wz = rvz + objZ;
 
             // Project vertex to screen
             if (Projection.Project(wx, wy, wz, out int screenX, out int screenY))
@@ -367,10 +363,10 @@ public class PlayerController
             }
 
             // Project shadow (point on ground below vertex)
-            // Get landscape altitude below this vertex
-            int worldX = wx / 256 + _state.XCamera;  // Unscale and add camera
-            int worldZ = wz / 256 + _state.ZCamera;
-            int groundY = _landscape.GetAltitude(worldX, worldZ);
+            // Reconstruct world position for altitude lookup
+            int worldVX = objX + _state.XCamera + rvx;
+            int worldVZ = objZ - FixedPoint.LANDSCAPE_Z + _state.ZCamera + rvz;
+            int groundY = _landscape.GetAltitude(worldVX, worldVZ);
 
             if (Projection.Project(wx, groundY - _state.YCamera, wz, out int shadowX, out int shadowY))
             {
@@ -426,20 +422,6 @@ public class PlayerController
                     0);  // Black shadow
             }
         }
-    }
-
-    private static int GetScaleFactor(int x, int y, int z)
-    {
-        uint ax = (uint)(x < 0 ? ~x : x);
-        uint ay = (uint)(y < 0 ? ~y : y);
-        uint max = ax | ay | (uint)z | 1;
-        int scale = 0;
-        while ((max & 0x80000000) == 0)
-        {
-            max <<= 1;
-            scale++;
-        }
-        return scale;
     }
 
     private static int DotProduct(int x, int y, int z, int mx, int my, int mz)

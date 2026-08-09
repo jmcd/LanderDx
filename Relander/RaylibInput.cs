@@ -36,8 +36,8 @@ public class RaylibInput : IGameInput
         }
     }
 
-    public bool LeftButton => Raylib.IsMouseButtonDown(MouseButton.Left);
-    public bool MiddleButton => Raylib.IsMouseButtonDown(MouseButton.Middle);
-    public bool RightButton => Raylib.IsMouseButtonDown(MouseButton.Right);
+    public bool LeftButton => Raylib.IsKeyDown(KeyboardKey.A);
+    public bool MiddleButton => Raylib.IsKeyDown(KeyboardKey.S);
+    public bool RightButton => Raylib.IsKeyDown(KeyboardKey.D);
     public bool EscapePressed => Raylib.IsKeyDown(KeyboardKey.Escape);
 }
