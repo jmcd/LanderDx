@@ -230,13 +230,14 @@ public class GameEngine
 
     private int DotMatrix(int x, int y, int z, int row)
     {
-        // Row 0 = nose, 1 = roof, 2 = side
+        // Matrix is stored row-major: row 0 = (xNoseV, xRoofV, xSideV), etc.
+        // Each row dot with the vertex gives the rotated component.
         int mx, my, mz;
         switch (row)
         {
-            case 0: mx = _state.XNoseV; my = _state.YNoseV; mz = _state.ZNoseV; break;
-            case 1: mx = _state.XRoofV; my = _state.YRoofV; mz = _state.ZRoofV; break;
-            default: mx = _state.XSideV; my = _state.YSideV; mz = _state.ZSideV; break;
+            case 0: mx = _state.XNoseV; my = _state.XRoofV; mz = _state.XSideV; break;
+            case 1: mx = _state.YNoseV; my = _state.YRoofV; mz = _state.YSideV; break;
+            default: mx = _state.ZNoseV; my = _state.ZRoofV; mz = _state.ZSideV; break;
         }
         return (int)(((long)x * mx + (long)y * my + (long)z * mz) >> 31);
     }

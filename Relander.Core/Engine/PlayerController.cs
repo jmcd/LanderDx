@@ -339,9 +339,13 @@ public class PlayerController
             int rvx, rvy, rvz;
             if (isRotating)
             {
-                rvx = DotProduct(vert.X, vert.Y, vert.Z, _state.XNoseV, _state.YNoseV, _state.ZNoseV);
-                rvy = DotProduct(vert.X, vert.Y, vert.Z, _state.XRoofV, _state.YRoofV, _state.ZRoofV);
-                rvz = DotProduct(vert.X, vert.Y, vert.Z, _state.XSideV, _state.YSideV, _state.ZSideV);
+                // Multiply vertex by rotation matrix (row vectors):
+                // rx = v · row0 = vx*xNoseV + vy*xRoofV + vz*xSideV
+                // ry = v · row1 = vx*yNoseV + vy*yRoofV + vz*ySideV
+                // rz = v · row2 = vx*zNoseV + vy*zRoofV + vz*zSideV
+                rvx = DotProduct(vert.X, vert.Y, vert.Z, _state.XNoseV, _state.XRoofV, _state.XSideV);
+                rvy = DotProduct(vert.X, vert.Y, vert.Z, _state.YNoseV, _state.YRoofV, _state.YSideV);
+                rvz = DotProduct(vert.X, vert.Y, vert.Z, _state.ZNoseV, _state.ZRoofV, _state.ZSideV);
             }
             else
             {
