@@ -20,17 +20,23 @@ public class RandomGenerator : IRandomSource
     /// <summary>Generate the next random number and update internal state.</summary>
     public int Next()
     {
-        // TST R1, R1, LSR #1 — test R1 AND (R1 >> 1)
+        // TST R1, R1, LSR #1 — sets Z flag, does NOT modify C
+        // The C flag used by RRX below is whatever was left by the caller.
+        // In the object placement loop, SUBS sets C=1 before each call.
+        // We use a fixed C=1 as the default (matches the common calling pattern).
+        const bool existingCarry = true;
+
         uint r1u = (uint)_seed2;
-        bool carry = (r1u & (r1u >> 1)) != 0;
+        // TST result affects Z (checked later by callers? No — MOVS overwrites Z too).
+        // The TST is essentially a NOP for flag purposes; it's likely a pipeline delay slot.
 
-        // MOVS R14, R0, RRX — rotate R0 right through carry
+        // MOVS R14, R0, RRX — rotate R0 right through the EXISTING C flag
         uint r0u = (uint)_seed1;
-        uint r14 = (r0u >> 1) | (carry ? 0x80000000u : 0u);
-        bool newCarry = (r0u & 1) != 0;
+        uint r14 = (r0u >> 1) | (existingCarry ? 0x80000000u : 0u);
+        bool nextCarry = (r0u & 1) != 0;
 
-        // ADC R1, R1, R1 — R1 = R1 + R1 + C
-        uint newR1 = r1u + r1u + (newCarry ? 1u : 0u);
+        // ADC R1, R1, R1 — R1 = R1 + R1 + nextCarry
+        uint newR1 = r1u + r1u + (nextCarry ? 1u : 0u);
 
         // EOR R14, R14, R0, LSL #12
         r14 ^= r0u << 12;
@@ -46,12 +52,11 @@ public class RandomGenerator : IRandomSource
 
     /// <summary>
     /// Generate two random numbers, matching the GetRandomNumbers pattern.
-    /// Returns the seed values that were current before mutation.
+    /// Returns the NEW (mutated) R0 and R1 values, as the original does.
     /// </summary>
     public (int, int) GetRandomNumbers()
     {
-        int r0 = _seed1;
-        Next();
-        return (r0, _seed2);
+        int newR0 = Next();
+        return (newR0, _seed1);  // newR0 → R0, new seed1 (was R1 in original) → R1
     }
 }

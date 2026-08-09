@@ -391,15 +391,11 @@ public class PlayerController
             var pv2 = projectedVertices[face.V2];
             var pv3 = projectedVertices[face.V3];
 
-            // Compute shading from face normal
-            int brightness = 0;
-            if (face.Normal.Y < 0)
-            {
-                brightness = (int)((0x80000000u - (uint)face.Normal.Y) >> 28);
-                if (face.Normal.X < 0) brightness++;
-                brightness = global::System.Math.Max(0, brightness - 5);
-                if (brightness > 3) brightness = 3;
-            }
+            // Compute shading from face normal (always computed, light above-left)
+            int brightness = (int)((0x80000000u - (uint)face.Normal.Y) >> 28);
+            if (face.Normal.X < 0) brightness++;
+            brightness = global::System.Math.Max(0, brightness - 5);
+            if (brightness > 3) brightness = 3;
 
             // Apply brightness to colour channels
             int r = ((face.Colour >> 8) & 0xF) + brightness;

@@ -124,7 +124,9 @@ public class GameEngine
 
                 int objX = worldX - _state.XCamera;
                 int objY = _landscape.GetAltitude(worldX, worldZ) - _state.YCamera;
-                int objZ = worldZ - _state.ZCamera;
+                // Screen-depth z: maps worldZ to positive projection distance
+                // At camera back: z ≈ LANDSCAPE_Z; at player: z = LANDSCAPE_Z_MID
+                int objZ = FixedPoint.LANDSCAPE_Z - _state.ZCamera + worldZ;
 
                 DrawObject(blueprint, objX, objY, objZ);
             }
@@ -134,6 +136,10 @@ public class GameEngine
     private void DrawObject(ObjectBlueprint blueprint, int objX, int objY, int objZ)
     {
         bool rotates = blueprint.Rotates;
+
+        // Reconstruct world position for shadow computation
+        int worldObjX = objX + _state.XCamera;
+        int worldObjZ = objZ - FixedPoint.LANDSCAPE_Z + _state.ZCamera;
 
         foreach (var face in blueprint.Faces)
         {
@@ -175,14 +181,11 @@ public class GameEngine
             if (!Projection.Project(wx3, wy3, wz3, out int sx3, out int sy3)) continue;
 
             // Shading: brightness from face normal (light above-left)
-            int shade = 0;
-            if (face.Normal.Y < 0)
-            {
-                shade = (int)((0x80000000u - (uint)face.Normal.Y) >> 28);
-                if (face.Normal.X < 0) shade++;
-                shade = global::System.Math.Max(0, shade - 5);
-                if (shade > 3) shade = 3;
-            }
+            // ALWAYS computed from yNormal — not conditional on sign
+            int shade = (int)((0x80000000u - (uint)face.Normal.Y) >> 28);
+            if (face.Normal.X < 0) shade++;
+            shade = global::System.Math.Max(0, shade - 5);
+            if (shade > 3) shade = 3;
             int r = global::System.Math.Min(((face.Colour >> 8) & 0xF) + shade, 15);
             int g = global::System.Math.Min(((face.Colour >> 4) & 0xF) + shade, 15);
             int b = global::System.Math.Min((face.Colour & 0xF) + shade, 15);
@@ -193,11 +196,34 @@ public class GameEngine
             int bufIdx = _buffers.GetBufferIndex(objZ);
             _buffers.AddTriangle(bufIdx, sx1, sy1, sx2, sy2, sx3, sy3, colourWord);
 
-            // Shadow
+            // Shadow: project vertices from ground level (landscape altitude)
             if (blueprint.HasShadow)
             {
-                int shIdx = _buffers.GetShadowBufferIndex(objZ);
-                _buffers.AddTriangle(shIdx, sx1, sy1 + 2, sx2, sy2 + 2, sx3, sy3 + 2, 0);
+                // Reconstruct worldZ from screen-depth z: worldZ = objZ - LANDSCAPE_Z + zCamera
+                int objWorldZ = objZ - FixedPoint.LANDSCAPE_Z + _state.ZCamera;
+
+                int worldVX1 = worldObjX + rx1;
+                int worldVZ1 = worldObjZ + rz1;
+                int worldVX2 = worldObjX + rx2;
+                int worldVZ2 = worldObjZ + rz2;
+                int worldVX3 = worldObjX + rx3;
+                int worldVZ3 = worldObjZ + rz3;
+
+                int alt1 = _landscape.GetAltitude(worldVX1, worldVZ1);
+                int alt2 = _landscape.GetAltitude(worldVX2, worldVZ2);
+                int alt3 = _landscape.GetAltitude(worldVX3, worldVZ3);
+
+                int shRelY1 = alt1 - _state.YCamera;
+                int shRelY2 = alt2 - _state.YCamera;
+                int shRelY3 = alt3 - _state.YCamera;
+
+                if (Projection.Project(wx1, shRelY1, wz1, out int shx1, out int shy1) &&
+                    Projection.Project(wx2, shRelY2, wz2, out int shx2, out int shy2) &&
+                    Projection.Project(wx3, shRelY3, wz3, out int shx3, out int shy3))
+                {
+                    int shIdx = _buffers.GetShadowBufferIndex(objZ);
+                    _buffers.AddTriangle(shIdx, shx1, shy1, shx2, shy2, shx3, shy3, 0);
+                }
             }
         }
     }
