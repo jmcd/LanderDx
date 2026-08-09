@@ -1,11 +1,24 @@
-﻿using Relander.Core;
+﻿using Raylib_cs;
+using Relander.Core;
 
 namespace Relander;
 
-class Program
+public static class Program
 {
     static void Main(string[] args)
     {
-        Console.WriteLine("Hello, World!");
+        Raylib.InitWindow(800, 480, "Hello, World");
+
+        while (!Raylib.WindowShouldClose())
+        {
+            Raylib.BeginDrawing();
+            Raylib.ClearBackground(Color.White);
+
+            Raylib.DrawText("Hello, world!", 12, 12, 20, Color.Black);
+
+            Raylib.EndDrawing();
+        }
+
+        Raylib.CloseWindow();    
     }
 }
