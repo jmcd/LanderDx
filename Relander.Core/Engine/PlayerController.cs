@@ -108,7 +108,9 @@ public class PlayerController
 
     private static int SinLookup(int angle)
     {
-        int index = (int)((uint)(angle + 0x40000000) >> 22) & 0x3FF;
+        // Table[angle >> 22] = sin(2π * index / 1024) * (2^31 - 1)
+        // Callers add 0x40000000 (90°) for cosine: SinLookup(angle + 0x40000000) = cos(angle)
+        int index = (int)((uint)angle >> 22) & 0x3FF;
         return SineTable.Data[index];
     }
 
@@ -318,6 +320,17 @@ public class PlayerController
         // Draw faces
         foreach (var face in blueprint.Faces)
         {
+            // Back-face culling for rotating objects: rotate normal to world space
+            if (isRotating)
+            {
+                int nx = face.Normal.X, ny = face.Normal.Y, nz = face.Normal.Z;
+                int rnx = DotProduct(nx, ny, nz, _state.XNoseV, _state.XRoofV, _state.XSideV);
+                int rny = DotProduct(nx, ny, nz, _state.YNoseV, _state.YRoofV, _state.YSideV);
+                int rnz = DotProduct(nx, ny, nz, _state.ZNoseV, _state.ZRoofV, _state.ZSideV);
+                long dot = (long)objX * rnx + (long)objY * rny + (long)objZ * rnz;
+                if (dot >= 0) continue;  // Face points away from camera
+            }
+
             // Get projected vertices
             var pv1 = projectedVertices[face.V1];
             var pv2 = projectedVertices[face.V2];

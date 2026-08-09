@@ -90,7 +90,7 @@ public class GameState
         XCamera = 0;
         ZCamera = 0;
         ShipDirection = 0;
-        ShipPitch = unchecked((int)0xC0000000);  // 270°: with SinLookup's +90° bias, gives yRoofV=+1 (thrust up), yNoseV≈0 (level)
+        ShipPitch = 0;  // Level: yRoofV=+1 (thrust up). Model Y-flipped so canopy (-Y) maps to world UP.
         int padHalf = FixedPoint.LAUNCHPAD_SIZE / 2;
         XPlayer = padHalf;
         YPlayer = FixedPoint.LAUNCHPAD_Y;

@@ -354,14 +354,20 @@ public class GameEngine
                 int px = (packed >> 20) & 0xFFF;
                 int py = packed & 0xFF;
                 byte colour = (byte)((packed >> 12) & 0xFF);
-                int size = (17 - cmd) / 3;
-                for (int dy = -size; dy <= size; dy++)
-                    for (int dx = -size; dx <= size; dx++)
-                    {
-                        int sx = px + dx, sy = py + dy;
-                        if ((uint)sx < 320 && (uint)sy < 240)
-                            _framebuffer[sy * 320 + sx] = colour;
-                    }
+
+                // Commands 0-8: colored particles (size encoded in cmd: 0-5=3x3, 6-7=2x2, 8=1x1)
+                // Commands 9-17: shadow particles (skip — they overlap and create black centers)
+                if (cmd <= 8)
+                {
+                    int size = cmd <= 5 ? 1 : 0;  // 3x3 or 1x1
+                    for (int dy = -size; dy <= size; dy++)
+                        for (int dx = -size; dx <= size; dx++)
+                        {
+                            int sx = px + dx, sy = py + dy;
+                            if ((uint)sx < 320 && (uint)sy < 240)
+                                _framebuffer[sy * 320 + sx] = colour;
+                        }
+                }
                 i += 2;
             }
             else i++;

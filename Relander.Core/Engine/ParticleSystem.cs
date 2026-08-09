@@ -159,10 +159,10 @@ public class ParticleSystem
         int cy = y - _state.YCamera;
         int cz = z - _state.ZCamera + FixedPoint.LANDSCAPE_Z;
 
-        // Visibility culling
-        if ((uint)cz >= (uint)FixedPoint.LANDSCAPE_Z_BEYOND) return;
-        if (cz < FixedPoint.LANDSCAPE_Z_FRONT) return;
-        if (global::System.Math.Abs(cx) >= FixedPoint.LANDSCAPE_X_HALF) return;
+        // Visibility culling: particle must be between front and back of visible landscape
+        if ((uint)cz >= (uint)FixedPoint.LANDSCAPE_Z) return;       // Too far back
+        if (cz < FixedPoint.LANDSCAPE_Z_FRONT) return;              // Too close
+        if (global::System.Math.Abs(cx) >= FixedPoint.LANDSCAPE_X_HALF) return;  // Off left/right
 
         // Project to screen
         if (!Projection.Project(cx, cy, cz, out int screenX, out int screenY))
