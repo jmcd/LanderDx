@@ -313,8 +313,6 @@ The conversion uses a single `byte[320×256]` framebuffer. The top 16 pixel rows
 1. **Controls**: Keyboard instead of mouse (original used Archimedes mouse with polar coordinate conversion and damping)
 2. **Frame rate**: Unlocked (original ran at approximately 12.5 FPS tied to VSync on the Archimedes)
 3. **Sound**: None (original had no sound either)
-4. **Bullet firing**: Not yet implemented (fire key sets fuel burn rate but no bullet particles are spawned)
-5. **Rock dropping**: Not yet implemented (score threshold logic exists but no rock spawning)
-6. **Crash animation**: Placeholder only (immediate respawn instead of 30-frame explosion sequence)
-7. **Score bar text**: Not rendered (only fuel bar shown)
-8. **Object destruction**: Particle→object collision logic exists but no explosion/remains spawning
+4. **Rock dropping**: Not yet implemented (score threshold logic exists but no rock spawning)
+5. **Score bar text**: Not rendered (only fuel bar shown)
+

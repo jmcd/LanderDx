@@ -358,5 +358,38 @@ public class ParticleTests
         Assert.That(bulletFired, Is.True, "Should fire a bullet when score > 0");
         Assert.That(particles.Count, Is.EqualTo(1), "Should have 1 bullet particle");
     }
+
+    [Test]
+    public void PlayerCrash_Triggers30FrameExplosionSequence()
+    {
+        var random = new RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+        engine.Update(new TestInput()); // Initial frame
+
+        // Move ship away from launchpad and below terrain to force crash
+        engine.State.XPlayer = 10 * FixedPoint.TILE_SIZE;
+        engine.State.YPlayer = FixedPoint.SEA_LEVEL + 10 * FixedPoint.TILE_SIZE;
+
+
+
+        int initialLives = engine.State.RemainingLives;
+        engine.Update(new TestInput()); // Crash frame
+
+        Assert.That(engine.State.CrashLoopCount, Is.EqualTo(30), "Should set 30-frame crash loop count");
+        Assert.That(engine.State.RemainingLives, Is.EqualTo(initialLives), "Should not decrement life until crash loop finishes");
+
+        // Advance 30 frames of crash animation
+        for (int i = 0; i < 30; i++)
+        {
+            engine.Update(new TestInput());
+        }
+
+        Assert.That(engine.State.CrashLoopCount, Is.EqualTo(0), "Crash loop should be finished");
+        Assert.That(engine.State.RemainingLives, Is.EqualTo(initialLives - 1), "Remaining lives should decrement after crash loop");
+    }
 }
+
+
 

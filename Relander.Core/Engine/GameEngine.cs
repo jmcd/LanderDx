@@ -63,12 +63,38 @@ public class GameEngine
     {
         if (input.EscapePressed) return false;
 
+        // Crash animation loop (30 frames of explosion after player crash)
+        if (_state.CrashLoopCount > 0)
+        {
+            _particles.UpdateAndDraw();
+            DrawVisibleObjects();
+            _buffers.AddTerminators();
+            DrawLandscapeAndBuffers();
+            RenderScoreBar();
+            CopyToScreen();
+            _rasterizer.Clear(0);
+            _buffers.Clear();
+            _state.MainLoopCount++;
+            _state.CrashLoopCount--;
+
+            if (_state.CrashLoopCount == 0)
+            {
+                _state.RemainingLives--;
+                if (_state.RemainingLives <= 0)
+                    StartNewGame();
+                else
+                    _state.PlaceOnLaunchpad();
+            }
+            return true;
+        }
+
         // 1. Player update (input → physics → collision → draw ship into buffers)
         if (!_player.Update(input))
         {
-            LoseLife();
+            TriggerCrash();
             return true;
         }
+
 
         _state.UpdateGravity();
 
@@ -425,13 +451,14 @@ public class GameEngine
         }
     }
 
-    private void LoseLife()
+    private void TriggerCrash()
     {
-        _state.RemainingLives--;
         _state.PlayingGame = 0;
-        if (_state.RemainingLives <= 0)
-            StartNewGame();
-        else
-            _state.PlaceOnLaunchpad();
+        _state.CrashLoopCount = 30;
+
+        // Lander.arm:2612: 5/16 tile sizes above player ship
+        int crashY = _state.YPlayer - (FixedPoint.TILE_SIZE * 5 / 16);
+        _particles.AddBigExplosion(_state.XPlayer, crashY, _state.ZPlayer, 81);
     }
 }
+

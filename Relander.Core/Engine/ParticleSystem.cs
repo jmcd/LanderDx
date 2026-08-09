@@ -312,6 +312,24 @@ public class ParticleSystem
             AddMovingParticle(x, y - (FixedPoint.TILE_SIZE >> 4), z, 0, -0x300000, 0, 10, FLAG_GRAVITY | FLAG_BOUNCE | splashColor, 9, 29);
         }
     }
+
+    /// <summary>Create a big player crash explosion cloud (Lander.arm:4389-4439, 81 clusters).</summary>
+    public void AddBigExplosion(int x, int y, int z, int clusters = 81)
+    {
+        for (int cluster = 0; cluster < clusters; cluster++)
+        {
+            // 2 sparks (FLAG_FADE)
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 8, 28);
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 8, 28);
+            // 1 debris particle
+            byte debrisColor = VidcColour.Encode(8, 4, 2);
+            AddMovingParticle(x, y, z, 0, 0, 0, 16, FLAG_GRAVITY | FLAG_BOUNCE | debrisColor, 7, 27);
+            // 1 smoke particle
+            byte smokeColor = VidcColour.Encode(8, 8, 8);
+            AddMovingParticle(x, y, z, 0, -0x80000, 0, 24, FLAG_FADE | smokeColor, 9, 28);
+        }
+    }
 }
+
 
 
