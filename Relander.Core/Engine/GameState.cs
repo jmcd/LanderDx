@@ -90,7 +90,7 @@ public class GameState
         XCamera = 0;
         ZCamera = 0;
         ShipDirection = 0;
-        ShipPitch = 1;
+        ShipPitch = unchecked((int)0xC0000000);  // 270°: with SinLookup's +90° bias, gives yRoofV=+1 (thrust up), yNoseV≈0 (level)
         int padHalf = FixedPoint.LAUNCHPAD_SIZE / 2;
         XPlayer = padHalf;
         YPlayer = FixedPoint.LAUNCHPAD_Y;
