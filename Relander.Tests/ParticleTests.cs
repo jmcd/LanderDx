@@ -178,4 +178,185 @@ public class ParticleTests
         }
         Assert.That(hasData, Is.True, "Particle should have been written to a graphics buffer");
     }
+
+    [Test]
+    public void Particle_SizeCommand_VariesWithDepth()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers);
+
+        // Add a close particle (near front of landscape, cz ~ 10 tiles)
+        particles.AddParticle(state.XPlayer, state.YPlayer, state.ZPlayer - 4 * FixedPoint.TILE_SIZE,
+            0, 0, 0, 10, VidcColour.Encode(15, 15, 15));
+
+        particles.UpdateAndDraw();
+        buffers.AddTerminators();
+
+        // Find the command in buffers
+        int foundCmd = -1;
+        for (int b = 0; b < buffers.BufferCount; b++)
+        {
+            var data = buffers.GetBufferData(b);
+            for (int i = 0; i < data.Length; i += 2)
+            {
+                if (data[i] <= 8)
+                {
+                    foundCmd = data[i];
+                    break;
+                }
+            }
+        }
+
+        TestContext.WriteLine($"Found particle command for close particle: {foundCmd}");
+        // Close particle should produce size command < 8 (larger than 1x1 single pixel)
+        Assert.That(foundCmd, Is.LessThan(8), "Close particle should have command < 8 (larger size)");
+    }
+
+    [Test]
+    public void Particle_Shadow_ProjectedToGroundLevel()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers);
+
+        // Particle high in the air above launchpad (py = YPlayer - 5 tiles)
+        int pX = state.XPlayer;
+        int pY = state.YPlayer - 5 * FixedPoint.TILE_SIZE;
+        int pZ = state.ZPlayer;
+        particles.AddParticle(pX, pY, pZ, 0, 0, 0, 10, VidcColour.Encode(15, 15, 15));
+
+        particles.UpdateAndDraw();
+        buffers.AddTerminators();
+
+        int particleY = -1;
+        int shadowY = -1;
+
+        for (int b = 0; b < buffers.BufferCount; b++)
+        {
+            var data = buffers.GetBufferData(b);
+            for (int i = 0; i < data.Length - 1; i += 2)
+            {
+                int cmd = data[i];
+                int packed = data[i + 1];
+                int py = packed & 0xFF;
+                if (cmd <= 8) particleY = py;
+                else if (cmd >= 9 && cmd <= 17) shadowY = py;
+            }
+        }
+
+        TestContext.WriteLine($"Particle screen Y: {particleY}, Shadow screen Y: {shadowY}");
+        Assert.That(particleY, Is.GreaterThanOrEqualTo(0), "Particle should be drawn");
+        Assert.That(shadowY, Is.GreaterThanOrEqualTo(0), "Shadow should be drawn");
+        Assert.That(shadowY, Is.GreaterThan(particleY), "Shadow screen Y should be lower on screen (larger Y) than particle in air");
+    }
+
+    [Test]
+    public void Particle_ColorFade_FadesFromWhiteToRed()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers);
+
+        // Particle with FLAG_FADE starting at lifespan 12
+        particles.AddParticle(state.XPlayer, state.YPlayer, state.ZPlayer,
+            0, 0, 0, 12, ParticleSystem.FLAG_FADE);
+
+        particles.UpdateAndDraw();
+        buffers.AddTerminators();
+
+        // Check colour recorded in buffer
+        byte colourAtLife11 = 0;
+        for (int b = 0; b < buffers.BufferCount; b++)
+        {
+            var data = buffers.GetBufferData(b);
+            for (int i = 0; i < data.Length - 1; i += 2)
+            {
+                if (data[i] <= 8)
+                {
+                    colourAtLife11 = (byte)((data[i + 1] >> 12) & 0xFF);
+                }
+            }
+        }
+
+        var (r, g, bCol) = VidcColour.DecodeToRgb24(colourAtLife11);
+        TestContext.WriteLine($"Life 11 decoded RGB: ({r}, {g}, {bCol})");
+        Assert.That(r, Is.EqualTo(255), "Red channel should be max (15 -> 255)");
+        Assert.That(g, Is.EqualTo(255), "Green channel should be max for life > 8");
+    }
+
+    [Test]
+    public void Exhaust_SpawnsMultipleParticlesInSpray()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.FuelBurnRate = 4; // Full thrust
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        particles.SpawnExhaust(state.XPlayer, state.YPlayer, state.ZPlayer,
+            state.XVelocity, state.YVelocity, state.ZVelocity);
+
+        Assert.That(particles.Count, Is.GreaterThan(1), "Exhaust should spawn multiple particles");
+        TestContext.WriteLine($"Spawned exhaust particle count: {particles.Count}");
+    }
+
+    [Test]
+    public void Bullet_SpawnsAndFiresFromNose()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        bool bulletFired = particles.SpawnBullet(state.XPlayer, state.YPlayer, state.ZPlayer,
+            state.XVelocity, state.YVelocity, state.ZVelocity,
+            state.XNoseV, state.YNoseV, state.ZNoseV);
+
+        Assert.That(bulletFired, Is.True, "Should fire a bullet when score > 0");
+        Assert.That(particles.Count, Is.EqualTo(1), "Should have 1 bullet particle");
+    }
 }
+

@@ -41,7 +41,7 @@ public class GameEngine
         _landscape = new LandscapeGenerator(_state);
         _objectMap = new ObjectMap(_landscape, _random);
         _player = new PlayerController(_state, _buffers, _landscape);
-        _particles = new ParticleSystem(_state, _landscape, _objectMap, _buffers);
+        _particles = new ParticleSystem(_state, _landscape, _objectMap, _buffers, _random);
 
         _framebuffer = new byte[320 * 240];
         _rasterizer = new TriangleRasterizer(_framebuffer);
@@ -75,13 +75,21 @@ public class GameEngine
         // 2. Exhaust particles if engines firing
         if (_state.FuelBurnRate != 0)
             _particles.SpawnExhaust(_state.XPlayer, _state.YPlayer, _state.ZPlayer,
-                _state.XExhaust, _state.YExhaust, _state.ZExhaust);
+                _state.XVelocity, _state.YVelocity, _state.ZVelocity);
 
-        // 3. Particles update + draw into buffers
+        // 3. Bullet firing if fire button pressed
+        if (input.Fire)
+            _particles.SpawnBullet(_state.XPlayer, _state.YPlayer, _state.ZPlayer,
+                _state.XVelocity, _state.YVelocity, _state.ZVelocity,
+                _state.XNoseV, _state.YNoseV, _state.ZNoseV);
+
+
+        // 4. Particles update + draw into buffers
         _particles.UpdateAndDraw();
 
-        // 4. Draw objects (trees, buildings) into buffers
+        // 5. Draw objects (trees, buildings) into buffers
         DrawVisibleObjects();
+
 
         // 5. Terminate buffers
         _buffers.AddTerminators();
@@ -353,26 +361,41 @@ public class GameEngine
                 int packed = data[i + 1];
                 int px = (packed >> 20) & 0xFFF;
                 int py = packed & 0xFF;
-                byte colour = (byte)((packed >> 12) & 0xFF);
 
-                // Commands 0-8: colored particles (size encoded in cmd: 0-5=3x3, 6-7=2x2, 8=1x1)
-                // Commands 9-17: shadow particles (skip — they overlap and create black centers)
+                int w, h;
+                byte colour;
+
                 if (cmd <= 8)
                 {
-                    int size = cmd <= 5 ? 1 : 0;  // 3x3 or 1x1
-                    for (int dy = -size; dy <= size; dy++)
-                        for (int dx = -size; dx <= size; dx++)
-                        {
-                            int sx = px + dx, sy = py + dy;
-                            if ((uint)sx < 320 && (uint)sy < 240)
-                                _framebuffer[sy * 320 + sx] = colour;
-                        }
+                    colour = (byte)((packed >> 12) & 0xFF);
+                    if (cmd <= 5) { w = 3; h = 2; }
+                    else if (cmd == 6) { w = 2; h = 2; }
+                    else if (cmd == 7) { w = 2; h = 1; }
+                    else { w = 1; h = 1; }
                 }
+                else
+                {
+                    colour = 0;  // Shadow particle (black)
+                    if (cmd <= 14) { w = 3; h = 1; }
+                    else if (cmd <= 16) { w = 2; h = 1; }
+                    else { w = 1; h = 1; }
+                }
+
+                int startDx = -(w / 2);
+                int startDy = -(h / 2);
+                for (int dy = 0; dy < h; dy++)
+                    for (int dx = 0; dx < w; dx++)
+                    {
+                        int sx = px + startDx + dx, sy = py + startDy + dy;
+                        if ((uint)sx < 320 && (uint)sy < 240)
+                            _framebuffer[sy * 320 + sx] = colour;
+                    }
                 i += 2;
             }
             else i++;
         }
     }
+
 
     // ---- Score bar and screen output ----
 

@@ -1,5 +1,6 @@
 using Relander.Core.Math;
 using Relander.Core.Data;
+using Relander.Core.Interfaces;
 
 namespace Relander.Core.Engine;
 
@@ -13,6 +14,7 @@ public class ParticleSystem
     private readonly LandscapeGenerator _landscape;
     private readonly ObjectMap _objectMap;
     private readonly GraphicsBuffers _buffers;
+    private readonly IRandomSource _random;
 
     // Particle data: flat array, 8 ints per particle, max 484 particles
     private readonly int[] _data = new int[FixedPoint.MAX_PARTICLES * 8];
@@ -34,12 +36,13 @@ public class ParticleSystem
     public const int FLAG_EXPLODE = 1 << 24;  // Explode on ground impact
 
     public ParticleSystem(GameState state, LandscapeGenerator landscape,
-        ObjectMap objectMap, GraphicsBuffers buffers)
+        ObjectMap objectMap, GraphicsBuffers buffers, IRandomSource? random = null)
     {
         _state = state;
         _landscape = landscape;
         _objectMap = objectMap;
         _buffers = buffers;
+        _random = random ?? new RandomGenerator(12345);
         _endIndex = 0;
         _data[P_FLAGS] = 0;  // Null terminator
     }
@@ -65,6 +68,22 @@ public class ParticleSystem
         _endIndex++;
         _data[_endIndex * 8 + P_FLAGS] = 0;  // New null terminator
         return true;
+    }
+
+    /// <summary>Add a moving particle with random variation added to velocity and lifespan (Lander.arm:3739-3783).</summary>
+    public bool AddMovingParticle(int x, int y, int z, int vx, int vy, int vz, int lifespan, int flags, int velocityShift = 10, int lifeShift = 29)
+    {
+        var (r0, _) = _random.GetRandomNumbers();
+        vx += r0 >> velocityShift;
+        var (r2, _) = _random.GetRandomNumbers();
+        vy += r2 >> velocityShift;
+        var (r4, _) = _random.GetRandomNumbers();
+        vz += r4 >> velocityShift;
+
+        var (r6, _) = _random.GetRandomNumbers();
+        lifespan += (int)((uint)r6 >> lifeShift);
+
+        return AddParticle(x, y, z, vx, vy, vz, lifespan, flags);
     }
 
     /// <summary>Process all particles: move, apply physics, draw.</summary>
@@ -97,6 +116,14 @@ public class ParticleSystem
             if ((flags & FLAG_GRAVITY) != 0)
                 _data[i + P_VY] += _state.Gravity;
 
+            // Colour fade (FLAG_FADE: white -> yellow -> orange -> red based on lifespan)
+            if ((flags & FLAG_FADE) != 0)
+            {
+                byte fadeColour = GetFadingColour(life);
+                flags = (flags & ~0xFF) | fadeColour;
+                _data[i + P_FLAGS] = flags;
+            }
+
             // Check terrain collision
             int terrainAlt = _landscape.GetAltitude(x, z);
 
@@ -112,6 +139,7 @@ public class ParticleSystem
                         // Destroy the object!
                         _objectMap.SetObjectAt(x, z, (byte)(objType + 12));
                         _state.CurrentScore += FixedPoint.SCORE_PER_DESTROY;
+                        AddSmallExplosion(x, y, z);
                     }
                 }
             }
@@ -121,13 +149,13 @@ public class ParticleSystem
             {
                 if (terrainAlt >= FixedPoint.SEA_LEVEL && (flags & FLAG_SPLASH) != 0)
                 {
-                    // Splash — delete particle
+                    AddSplash(x, terrainAlt, z, (flags & FLAG_BIG_SPLASH) != 0);
                     DeleteParticle(idx);
                     continue;
                 }
                 if ((flags & FLAG_EXPLODE) != 0)
                 {
-                    // Explosion — delete particle
+                    AddSmallExplosion(x, terrainAlt, z);
                     DeleteParticle(idx);
                     continue;
                 }
@@ -152,6 +180,23 @@ public class ParticleSystem
         }
     }
 
+    private static byte GetFadingColour(int life)
+    {
+        int r = 15;
+        int g, b;
+        if (life >= 8)
+        {
+            g = 15;
+            b = global::System.Math.Min(15, (life - 8) * 2);
+        }
+        else
+        {
+            g = global::System.Math.Max(0, life * 2);
+            b = 0;
+        }
+        return VidcColour.Encode(r, g, b);
+    }
+
     private void DrawParticle(int x, int y, int z, int flags)
     {
         // Convert to camera-relative
@@ -172,17 +217,22 @@ public class ParticleSystem
         if (!Projection.IsOnScreen(screenX, screenY))
             return;
 
-        // Determine particle size from z-depth (0-8, larger = closer = bigger)
-        int size = global::System.Math.Clamp((int)((uint)cz >> 24), 0, 8);
+        // Determine particle size from z-depth (Lander.arm:8472 cz >> 25, clamped 0..8)
+        int size = global::System.Math.Clamp((int)((uint)cz >> 25), 0, 8);
         byte colour = (byte)(flags & 0xFF);
 
         // Draw particle
         int bufferIdx = _buffers.GetBufferIndex(cz - FixedPoint.TILE_SIZE);
         _buffers.AddParticle(bufferIdx, size, screenX, screenY, colour);
 
-        // Draw shadow (one buffer back, command 9-17)
-        int shadowIdx = _buffers.GetShadowBufferIndex(cz - FixedPoint.TILE_SIZE);
-        _buffers.AddParticle(shadowIdx, size + 9, screenX, screenY, 0);
+        // Draw shadow on ground (one buffer back, command 9-17)
+        int terrainAlt = _landscape.GetAltitude(x, z);
+        int shadowCy = terrainAlt - _state.YCamera;
+        if (Projection.Project(cx, shadowCy, cz, out int shadowSx, out int shadowSy) && Projection.IsOnScreen(shadowSx, shadowSy))
+        {
+            int shadowIdx = _buffers.GetShadowBufferIndex(cz - FixedPoint.TILE_SIZE);
+            _buffers.AddParticle(shadowIdx, size + 9, shadowSx, shadowSy, 0);
+        }
     }
 
     private void DeleteParticle(int index)
@@ -198,19 +248,70 @@ public class ParticleSystem
         _data[_endIndex * 8 + P_FLAGS] = 0;  // Clear old last slot
     }
 
-    /// <summary>Spawn exhaust particles when the engine is firing.</summary>
+    /// <summary>Spawn exhaust particles when the engine is firing (Lander.arm:2241-2340).</summary>
     public void SpawnExhaust(int x, int y, int z, int vx, int vy, int vz)
     {
-        // Simplified exhaust: small particles near the ship
-        for (int i = 0; i < 3; i++)
+        int pVx = (vx + (_state.XExhaust >> 7)) >> 1;
+        int pVy = (vy + (_state.YExhaust >> 7)) >> 1;
+        int pVz = (vz + (_state.ZExhaust >> 7)) >> 1;
+
+        int pX = x - pVx + (_state.XExhaust >> 7);
+        int pY = y - pVy + (_state.YExhaust >> 7);
+        int pZ = z - pVz + (_state.ZExhaust >> 7);
+
+        int count = _state.FuelBurnRate >= 4 ? 8 : 2;
+        for (int i = 0; i < count; i++)
         {
-            int px = x + ((i - 1) << 20);
-            int py = y + 0x80000;
-            int pz = z;
-            int flags = FLAG_GRAVITY | FLAG_BOUNCE | VidcColour.Encode(15, 8, 0);  // Orange
-            AddParticle(px, py, pz,
-                vx >> 3, vy >> 3, vz >> 3,
-                8, flags);
+            int flags = FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY;
+            AddMovingParticle(pX, pY, pZ, pVx, pVy, pVz, 8, flags, 10, 29);
+        }
+    }
+
+    /// <summary>Spawn a bullet particle when the fire button is pressed (Lander.arm:2377-2465).</summary>
+    public bool SpawnBullet(int x, int y, int z, int vx, int vy, int vz, int xNoseV, int yNoseV, int zNoseV)
+    {
+        if (_state.CurrentScore <= 0) return false;
+        _state.CurrentScore--;
+
+        int pVx = vx + (xNoseV >> 8);
+        int pVy = vy + (yNoseV >> 8);
+        int pVz = vz + (zNoseV >> 8);
+
+        int pX = x - pVx + (xNoseV >> 7);
+        int pY = y - pVy + (yNoseV >> 7);
+        int pZ = z - pVz + (zNoseV >> 7);
+
+        int flags = FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY | FLAG_DESTROY | FLAG_BIG_SPLASH | FLAG_EXPLODE | VidcColour.Encode(15, 15, 15);
+        return AddParticle(pX, pY, pZ, pVx, pVy, pVz, 20, flags);
+    }
+
+    /// <summary>Add a small explosion cloud to the buffer (Lander.arm:3384-3436).</summary>
+    public void AddSmallExplosion(int x, int y, int z)
+    {
+        for (int cluster = 0; cluster < 3; cluster++)
+        {
+            // 2 sparks (FLAG_FADE)
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 9, 29);
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 9, 29);
+            // 1 debris particle
+            byte debrisColor = VidcColour.Encode(8, 4, 2);
+            AddMovingParticle(x, y, z, 0, 0, 0, 16, FLAG_GRAVITY | FLAG_BOUNCE | debrisColor, 8, 28);
+            // 1 smoke particle
+            byte smokeColor = VidcColour.Encode(8, 8, 8);
+            AddMovingParticle(x, y, z, 0, -0x80000, 0, 24, FLAG_FADE | smokeColor, 10, 28);
+        }
+    }
+
+    /// <summary>Splash a particle into the sea (Lander.arm:3413-3436).</summary>
+    public void AddSplash(int x, int y, int z, bool big)
+    {
+        int count = big ? 65 : 4;
+        byte splashColor = VidcColour.Encode(15, 15, 15);
+        for (int i = 0; i < count; i++)
+        {
+            AddMovingParticle(x, y - (FixedPoint.TILE_SIZE >> 4), z, 0, -0x300000, 0, 10, FLAG_GRAVITY | FLAG_BOUNCE | splashColor, 9, 29);
         }
     }
 }
+
+
