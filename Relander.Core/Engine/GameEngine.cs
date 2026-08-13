@@ -286,9 +286,13 @@ public class GameEngine
                 DrawBuffer(row - 2);
         }
 
-        // Draw remaining buffers
-        for (int b = FixedPoint.TILES_Z - 1; b < FixedPoint.GRAPHICS_BUFFER_COUNT; b++)
-            DrawBuffer(b);
+        // Draw remaining buffers: the penultimate and last buffers
+        // (Lander.arm:1216-1222 draws TILES_Z - 2 = 9 and TILES_Z - 1 = 10).
+        // Buffer indices clamp at LANDSCAPE_Z_DEPTH (10), so buffer 11 is never
+        // populated; drawing it instead of buffer 9 left all objects on the 9th
+        // z-row invisible.
+        DrawBuffer(FixedPoint.TILES_Z - 2);
+        DrawBuffer(FixedPoint.TILES_Z - 1);
     }
 
     // ---- Buffer rendering to framebuffer ----

@@ -1,3 +1,4 @@
+using Relander.Core.Data;
 using Relander.Core.Engine;
 using Relander.Core.Interfaces;
 using Relander.Core.Math;
@@ -277,4 +278,57 @@ public class GameEngineIntegrationTests
             }
         }
     }
+
+
+    [Test]
+    public void ObjectOnNinthZRow_IsVisible()
+    {
+        // Objects on the 9th z-row (tz = 8) map to graphics buffer 9. The main
+        // loop must draw buffers 9 and 10 after the landscape
+        // (Lander.arm:1216-1222); drawing 10 and 11 instead left row-9 objects
+        // invisible (buffer indices clamp at 10, so 11 is never populated).
+        var random = new Relander.Core.Engine.RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        // Settle the camera first (it is set during the first update frame)
+        engine.Update(new TestInput());
+
+        var state = engine.State;
+        int camTileX = state.XCamera & unchecked((int)0xFF000000);
+        int camTileZ = state.ZCamera & unchecked((int)0xFF000000);
+        // Tile containing the camera x — projects to screen centre (sx ~ 160)
+        int worldX = camTileX;
+        int worldZ = (camTileZ - 8 * FixedPoint.TILE_SIZE) & unchecked((int)0xFF000000);
+
+        // Place a building (type 8) on the 9th z-row, horizontally centered
+        engine.ObjectMap.SetObjectAt(worldX, worldZ, 8);
+
+        screen.Clear(0);
+        engine.Update(new TestInput());
+        int withObject = CountNonZero(screen, 60, 40, 240, 200);
+
+        // Remove the object and re-render; the landscape and ship are identical,
+        // so any extra pixels in the region come from the object. (The region
+        // excludes the inset minimap at x >= 252, which also shows objects.)
+        engine.ObjectMap.SetObjectAt(worldX, worldZ, (byte)ObjectTypes.NO_OBJECT);
+        screen.Clear(0);
+        engine.Update(new TestInput());
+        int withoutObject = CountNonZero(screen, 60, 40, 240, 200);
+
+        Assert.That(withObject, Is.GreaterThan(withoutObject),
+            $"Object on the 9th z-row must be drawn (with={withObject}, without={withoutObject})");
+    }
+
+    private static int CountNonZero(TestScreen screen, int x0, int y0, int x1, int y1)
+    {
+        int count = 0;
+        for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++)
+                if (screen.GetPlayPixel(x, y) != 0)
+                    count++;
+        return count;
+    }
+
 }
