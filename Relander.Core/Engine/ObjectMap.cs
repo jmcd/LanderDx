@@ -72,6 +72,11 @@ public class ObjectMap
         Map[0x0107] = (byte)LAUNCHPAD_OBJECT;  // (7, 1)
         Map[0x0307] = (byte)LAUNCHPAD_OBJECT;  // (7, 3)
         Map[0x0507] = (byte)LAUNCHPAD_OBJECT;  // (7, 5)
+
+        // The minimap cache is a downsampled copy of this map — a new placement
+        // must invalidate it, or the minimap keeps showing the previous game's
+        // objects until the first one is destroyed (the only other invalidation).
+        MinimapRenderer.InvalidateCache();
     }
 
     /// <summary>

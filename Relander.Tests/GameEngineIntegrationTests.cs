@@ -376,4 +376,39 @@ public class GameEngineIntegrationTests
         return count;
     }
 
+
+
+    [Test]
+    public void NewGame_InvalidatesMinimapCache()
+    {
+        // The minimap is a downsampled copy of the object map. A fresh placement
+        // (new game) must rebuild it, or the overlay keeps showing the previous
+        // game's objects (the cache was previously invalidated only on object
+        // destruction). Each PlaceObjects call advances the PRNG, so map B
+        // differs from map A and the rebuilt minimap must differ too.
+        var random = new Relander.Core.Engine.RandomGenerator(33);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+
+        engine.StartNewGame();
+        engine.Update(new TestInput());  // renders map A's minimap
+        byte[] minimapA = screen.GetFramebuffer().ToArray();
+
+        engine.StartNewGame();           // places map B (invalidates cache with the fix)
+        engine.Update(new TestInput());  // renders map B's minimap
+        byte[] minimapB = screen.GetFramebuffer().ToArray();
+
+        // Compare only the inset minimap region (x 252..315, y 22..85 in screen
+        // coordinates). The player crosshair is in the same blink state (both
+        // MainLoopCounts are 1), so any difference is map content.
+        int differing = 0;
+        for (int y = 22; y <= 85; y++)
+            for (int x = 252; x <= 315; x++)
+                if (minimapA[y * 320 + x] != minimapB[y * 320 + x])
+                    differing++;
+
+        Assert.That(differing, Is.GreaterThan(0),
+            "Minimap must be rebuilt from the new object map after a new game starts");
+    }
+
 }
