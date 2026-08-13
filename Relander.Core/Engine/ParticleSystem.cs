@@ -143,7 +143,10 @@ public class ParticleSystem
                     {
                         // Destroy the object!
                         _objectMap.SetObjectAt(x, z, (byte)(objType + 12));
-                        _state.CurrentScore += FixedPoint.SCORE_PER_DESTROY;
+                        // Only bullets score: the original skips the +20 when bit 17
+                        // (rock) is set on the hitting particle (Lander.arm:3352-3355)
+                        if ((flags & FLAG_ROCK) == 0)
+                            _state.CurrentScore += FixedPoint.SCORE_PER_DESTROY;
                         MinimapRenderer.InvalidateCache();
                         AddSmallExplosion(x, y, z);
                         DeleteParticle(idx);

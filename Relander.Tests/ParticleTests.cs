@@ -417,6 +417,78 @@ public class ParticleTests
     }
 
     [Test]
+    public void RockDestroyingObject_DoesNotAwardScore()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        objectMap.SetObjectAt(objX, objZ, 1);
+
+        int scoreBefore = state.CurrentScore;
+        int groundAlt = landscape.GetAltitude(objX, objZ);
+        int rockY = groundAlt - FixedPoint.SAFE_HEIGHT / 2;
+
+        // Rock = FLAG_ROCK | FLAG_DESTROY (bit 17 set). The original only awards
+        // +20 when bit 17 is clear (Lander.arm:3352-3355).
+        particles.AddParticle(objX, rockY, objZ, 0, 0, 0, 20,
+            ParticleSystem.FLAG_ROCK | ParticleSystem.FLAG_DESTROY);
+        particles.UpdateAndDraw();
+
+        Assert.That(objectMap.GetObjectAt(objX, objZ), Is.EqualTo(13),
+            "Rock should still destroy the object");
+        Assert.That(state.CurrentScore, Is.EqualTo(scoreBefore),
+            "Rock-destroyed objects must not award +20 score");
+    }
+
+    [Test]
+    public void BulletDestroyingObject_AwardsScore()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        objectMap.SetObjectAt(objX, objZ, 1);
+
+        int scoreBefore = state.CurrentScore;
+        int groundAlt = landscape.GetAltitude(objX, objZ);
+        int bulletY = groundAlt - FixedPoint.SAFE_HEIGHT / 2;
+
+        // Bullet-like particle: destroy flag, no rock bit
+        particles.AddParticle(objX, bulletY, objZ, 0, 0, 0, 20, ParticleSystem.FLAG_DESTROY);
+        particles.UpdateAndDraw();
+
+        Assert.That(objectMap.GetObjectAt(objX, objZ), Is.EqualTo(13),
+            "Bullet should destroy the object");
+        Assert.That(state.CurrentScore, Is.EqualTo(scoreBefore + FixedPoint.SCORE_PER_DESTROY),
+            "Bullet-destroyed objects must award +20 score");
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);
