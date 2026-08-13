@@ -8,44 +8,49 @@ namespace Relander.Core.Engine;
 /// </summary>
 public class RandomGenerator : IRandomSource
 {
-    private int _seed1;
-    private int _seed2;
+    private uint _seed1;
+    private uint _seed2;
 
     public RandomGenerator(int seed1 = 0x12345678, int seed2 = unchecked((int)0x9ABCDEF0))
     {
-        _seed1 = seed1;
-        _seed2 = seed2;
+        _seed1 = (uint)seed1;
+        _seed2 = (uint)seed2;
     }
 
     /// <summary>Generate the next random number and update internal state.</summary>
     public int Next()
     {
-        // TST R1, R1, LSR #1 — sets Z flag, does NOT modify C
-        // The C flag used by RRX below is whatever was left by the caller.
-        // In the object placement loop, SUBS sets C=1 before each call.
-        // We use a fixed C=1 as the default (matches the common calling pattern).
-        const bool existingCarry = true;
+        // Lander.arm:7830-7854:
+        // LDR R0, randomSeed1
+        // LDR R1, randomSeed2
+        // TST R1, R1, LSR #1 -> sets C flag to bit 0 of R1 (seed2)
+        // MOVS R14, R0, RRX -> rotates R0 right 1 bit using C (from seed2 bit 0), bit 0 of R0 goes into C
+        // ADC R1, R1, R1 -> R1 = R1 + R1 + C
+        // EOR R14, R14, R0, LSL #12
+        // EOR R0, R14, R14, LSR #20
+        // STR R1, randomSeed1
+        // STR R0, randomSeed2
+        uint r0 = _seed1;
+        uint r1 = _seed2;
 
-        uint r1u = (uint)_seed2;
-        // TST result affects Z (checked later by callers? No — MOVS overwrites Z too).
-        // The TST is essentially a NOP for flag purposes; it's likely a pipeline delay slot.
+        // TST R1, R1, LSR #1 sets C to bit 0 of r1
+        bool c0 = (r1 & 1) != 0;
 
-        // MOVS R14, R0, RRX — rotate R0 right through the EXISTING C flag
-        uint r0u = (uint)_seed1;
-        uint r14 = (r0u >> 1) | (existingCarry ? 0x80000000u : 0u);
-        bool nextCarry = (r0u & 1) != 0;
+        // MOVS R14, R0, RRX — rotate R0 right 1 bit using c0, bit 0 of r0 becomes c1
+        uint r14 = (r0 >> 1) | (c0 ? 0x80000000u : 0u);
+        bool c1 = (r0 & 1) != 0;
 
-        // ADC R1, R1, R1 — R1 = R1 + R1 + nextCarry
-        uint newR1 = r1u + r1u + (nextCarry ? 1u : 0u);
+        // ADC R1, R1, R1 — R1 = R1 + R1 + c1
+        uint newR1 = r1 + r1 + (c1 ? 1u : 0u);
 
         // EOR R14, R14, R0, LSL #12
-        r14 ^= r0u << 12;
+        r14 ^= (r0 << 12);
 
         // EOR R0, R14, R14, LSR #20
         uint newR0 = r14 ^ (r14 >> 20);
 
-        _seed1 = (int)newR1;
-        _seed2 = (int)newR0;
+        _seed1 = newR1;
+        _seed2 = newR0;
 
         return (int)newR0;
     }
@@ -57,6 +62,6 @@ public class RandomGenerator : IRandomSource
     public (int, int) GetRandomNumbers()
     {
         int newR0 = Next();
-        return (newR0, _seed1);  // newR0 → R0, new seed1 (was R1 in original) → R1
+        return (newR0, (int)_seed1);  // newR0 -> R0, _seed1 -> R1
     }
 }

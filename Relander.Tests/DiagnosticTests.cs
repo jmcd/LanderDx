@@ -234,7 +234,10 @@ public class DiagnosticTests
                 var bp = ObjectTypes.GetBlueprint(objType);
                 if (bp == null) continue;
 
-                // Use fixed screen-depth z (same formula as DrawVisibleObjects)
+                // Move camera to object position so it is in view
+                state.XCamera = worldX;
+                state.ZCamera = worldZ + FixedPoint.CAMERA_PLAYER_Z;
+
                 int objX = worldX - state.XCamera;
                 int objZ = FixedPoint.LANDSCAPE_Z - state.ZCamera + worldZ;
                 int objY = engine.Landscape.GetAltitude(worldX, worldZ) - state.YCamera;
@@ -254,8 +257,6 @@ public class DiagnosticTests
                     if (v1ok && v2ok && v3ok && Projection.IsOnScreen(sx1, sy1))
                     {
                         projectedFaces++;
-                        if (projectedFaces <= 3)
-                            TestContext.WriteLine($"Type {objType} at ({tx},{tz}) face: screen ({sx1},{sy1}) ({sx2},{sy2}) ({sx3},{sy3})");
                     }
                 }
             }

@@ -42,16 +42,13 @@ public class GraphicsBuffers
 
     /// <summary>
     /// Get the buffer number for a given screen-depth z-coordinate.
-    /// Uses the original formula: LANDSCAPE_Z - cameraRelativeZ + TILE_SIZE,
-    /// where cameraRelativeZ = LANDSCAPE_Z - zObject (= worldZ - zCamera).
-    /// This simplifies to zObject + TILE_SIZE, clamped to the depth range.
-    /// All objects in the foreground clamp to the same near buffer (buffer 10),
-    /// with correct depth order from the back-to-front iteration sequence.
+    /// Uses the original formula: LANDSCAPE_Z - zObject + TILE_SIZE,
+    /// clamped to LANDSCAPE_Z_DEPTH if >= LANDSCAPE_Z_BEYOND.
     /// </summary>
     public int GetBufferIndex(int zObject)
     {
-        int offset = zObject + FixedPoint.TILE_SIZE;
-        if (offset > FixedPoint.LANDSCAPE_Z_BEYOND)
+        int offset = FixedPoint.LANDSCAPE_Z - zObject + FixedPoint.TILE_SIZE;
+        if ((uint)offset >= (uint)FixedPoint.LANDSCAPE_Z_BEYOND)
             offset = FixedPoint.LANDSCAPE_Z_DEPTH;
         return (int)((uint)offset >> 24) & 0xFF;
     }
@@ -61,8 +58,8 @@ public class GraphicsBuffers
     /// </summary>
     public int GetShadowBufferIndex(int zObject)
     {
-        int offset = zObject;
-        if (offset > FixedPoint.LANDSCAPE_Z_BEYOND)
+        int offset = FixedPoint.LANDSCAPE_Z - zObject;
+        if ((uint)offset >= (uint)FixedPoint.LANDSCAPE_Z_BEYOND)
             offset = FixedPoint.LANDSCAPE_Z_DEPTH;
         return (int)((uint)offset >> 24) & 0xFF;
     }

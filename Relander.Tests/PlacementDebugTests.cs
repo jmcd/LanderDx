@@ -70,20 +70,18 @@ public class PlacementDebugTests
     }
 
     [Test]
-    public void PRNG_ProducesRepeatingSequence()
+    public void PRNG_ProducesMaximalLengthSequence()
     {
-        // The original PRNG has a 64-value cycle by design
+        // 33-bit LFSR shift generator from Acorn ARM manual should produce 1000 unique values in 1000 calls
         var random = new RandomGenerator(0x12345678, unchecked((int)0x9ABCDEF0));
         var seen = new HashSet<int>();
-        int repeats = 0;
         for (int i = 0; i < 1000; i++)
         {
             int val = random.GetRandomNumbers().Item1;
-            if (!seen.Add(val)) repeats++;
+            seen.Add(val);
         }
-        TestContext.WriteLine($"Unique values in 1000 calls: {seen.Count}, repeats: {repeats}");
-        // The PRNG cycles every ~64 values
-        Assert.That(seen.Count, Is.InRange(32, 128),
-            $"Expected 64-ish unique values, got {seen.Count}");
+        TestContext.WriteLine($"Unique values in 1000 calls: {seen.Count}");
+        Assert.That(seen.Count, Is.EqualTo(1000),
+            $"Expected 1000 unique values across 1000 calls, got {seen.Count}");
     }
 }
