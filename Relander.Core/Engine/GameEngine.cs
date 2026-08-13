@@ -343,8 +343,14 @@ public class GameEngine
                     else { w = 1; h = 1; }
                 }
 
-                int startDx = -(w / 2);
-                int startDy = -(h / 2);
+                // The original anchors blocks at the particle coordinate: 3-wide
+                // blocks extend x-1..x+1 (STRB at offsets -1, 0, +1 in
+                // Draw3x2ParticleFromBuffer, Lander.arm:8072-8073), all other
+                // widths start at x, and y is always the top row. The previous
+                // centring drew 2x1/2x2 particles one pixel left and 2x2/3x2
+                // particles one pixel up.
+                int startDx = (w == 3) ? -1 : 0;
+                int startDy = 0;
                 for (int dy = 0; dy < h; dy++)
                     for (int dx = 0; dx < w; dx++)
                     {
