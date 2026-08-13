@@ -802,6 +802,135 @@ public class ParticleTests
     }
 
     [Test]
+    public void NonBouncingParticle_TouchingGround_IsDeleted()
+    {
+        // BounceParticle (Lander.arm:3241-3384): on ground contact a particle
+        // without bit 19 (bounce) is deleted outright
+        // (TST R7, #&00080000 / BEQ DeleteParticleData). The previous port only
+        // acted for splash/explode/bounce flags, so plain particles kept sinking
+        // through the terrain forever.
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        int x = 10 * FixedPoint.TILE_SIZE;
+        int z = 10 * FixedPoint.TILE_SIZE;
+        int terrainAlt = landscape.GetAltitude(x, z);
+
+        // Gravity-only particle, just below the terrain surface
+        particles.AddParticle(x, terrainAlt + 1, z, 0, 0, 0, 20, ParticleSystem.FLAG_GRAVITY);
+        particles.UpdateAndDraw();
+
+        Assert.That(particles.Count, Is.EqualTo(0),
+            "A particle without the bounce bit must be deleted on ground contact");
+    }
+
+    [Test]
+    public void SeaContact_WithoutSplashBit_DeletesParticle()
+    {
+        // BounceParticle: sea contact (terrainAlt == SEA_LEVEL) splashes only
+        // when bit 18 is set; the particle is deleted either way
+        // (Lander.arm:3251-3255, 3396-3403).
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        // A tile that is at sea level: the map is all zeros here and the
+        // altitude is clamped to SEA_LEVEL, so find one by scanning
+        int seaX = -1, seaZ = -1;
+        for (int tz = 20; tz < 60 && seaX < 0; tz++)
+        {
+            for (int tx = 20; tx < 60; tx++)
+            {
+                if (landscape.GetAltitude(tx * FixedPoint.TILE_SIZE, tz * FixedPoint.TILE_SIZE) == FixedPoint.SEA_LEVEL)
+                {
+                    seaX = tx * FixedPoint.TILE_SIZE;
+                    seaZ = tz * FixedPoint.TILE_SIZE;
+                    break;
+                }
+            }
+        }
+        Assume.That(seaX, Is.GreaterThanOrEqualTo(0), "No sea tile found in scan range");
+
+        // Bounce-flagged particle (bit 18 clear) just below the sea surface
+        particles.AddParticle(seaX, FixedPoint.SEA_LEVEL + 1, seaZ, 0, 0, 0, 20, ParticleSystem.FLAG_BOUNCE);
+        particles.UpdateAndDraw();
+
+        Assert.That(particles.Count, Is.EqualTo(0),
+            "Sea contact without the splash bit deletes the particle without spraying");
+    }
+
+    [Test]
+    public void SeaContact_WithSplashBit_SpraysAndDeletes()
+    {
+        // Sea contact with bit 18 set: 4 spray particles (65 for big splash)
+        // and the original particle is deleted (Lander.arm:3405-3436).
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        int seaX = -1, seaZ = -1;
+        for (int tz = 20; tz < 60 && seaX < 0; tz++)
+        {
+            for (int tx = 20; tx < 60; tx++)
+            {
+                if (landscape.GetAltitude(tx * FixedPoint.TILE_SIZE, tz * FixedPoint.TILE_SIZE) == FixedPoint.SEA_LEVEL)
+                {
+                    seaX = tx * FixedPoint.TILE_SIZE;
+                    seaZ = tz * FixedPoint.TILE_SIZE;
+                    break;
+                }
+            }
+        }
+        Assume.That(seaX, Is.GreaterThanOrEqualTo(0), "No sea tile found in scan range");
+
+        particles.AddParticle(seaX, FixedPoint.SEA_LEVEL + 1, seaZ, 0, 0, 0, 20,
+            ParticleSystem.FLAG_SPLASH | ParticleSystem.FLAG_BOUNCE);
+        particles.UpdateAndDraw();
+
+        // The original particle is consumed and 4 spray particles are spawned.
+        // Newly added particles are processed in the same buffer pass (as in the
+        // original), so spray with a downward jitter >= SPLASH_HEIGHT immediately
+        // re-contacts the sea and is deleted — hence count <= 4.
+        Assert.That(particles.Count, Is.InRange(1, 4),
+            "Small splash = up to 4 surviving spray particles");
+        for (int idx = 0; idx < particles.Count; idx++)
+        {
+            var p = particles.GetParticle(idx);
+            Assert.That(p.Flags & ParticleSystem.FLAG_BOUNCE, Is.EqualTo(0),
+                "Spray must not bounce on the sea surface (the old spray did)");
+            Assert.That(p.Flags & ParticleSystem.FLAG_GRAVITY, Is.Not.EqualTo(0));
+        }
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);

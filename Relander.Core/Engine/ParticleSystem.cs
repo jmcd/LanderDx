@@ -176,29 +176,40 @@ public class ParticleSystem
                 }
             }
 
-            // Bounce / splash on ground
-            if (y >= terrainAlt)
+            // Ground contact, following BounceParticle (Lander.arm:3241-3384):
+            // strict y > terrainAlt (BLGT), snap to the ground, then sea splash,
+            // no-bounce delete, explode, or bounce — in that order.
+            if (y > terrainAlt)
             {
-                if (terrainAlt >= FixedPoint.SEA_LEVEL && (flags & FLAG_SPLASH) != 0)
+                y = terrainAlt;  // MOV R1, R9
+
+                if (terrainAlt == FixedPoint.SEA_LEVEL)
                 {
-                    AddSplash(x, terrainAlt, z, (flags & FLAG_BIG_SPLASH) != 0);
+                    // SplashParticleIntoSea: spray when bit 18 is set (big splash
+                    // at bit 23), and delete the particle either way
+                    if ((flags & FLAG_SPLASH) != 0)
+                        AddSplash(x, y, z, (flags & FLAG_BIG_SPLASH) != 0);
+                    DeleteParticle(idx);
+                    continue;
+                }
+                if ((flags & FLAG_BOUNCE) == 0)
+                {
+                    // TST R7, #&00080000 / BEQ DeleteParticleData — particles
+                    // without the bounce bit are consumed on landing
                     DeleteParticle(idx);
                     continue;
                 }
                 if ((flags & FLAG_EXPLODE) != 0)
                 {
-                    AddSmallExplosion(x, terrainAlt, z);
+                    // TST R7, #&01000000 / BNE AddSmallExplosionToBuffer
+                    AddSmallExplosion(x, y, z);
                     DeleteParticle(idx);
                     continue;
                 }
-                if ((flags & FLAG_BOUNCE) != 0)
-                {
-                    // Bounce: halve velocity, negate y
-                    y = terrainAlt;
-                    _data[i + P_VX] >>= 1;
-                    _data[i + P_VY] = -(_data[i + P_VY] >> 1);
-                    _data[i + P_VZ] >>= 1;
-                }
+                // Bounce: halve velocity (arithmetic shifts), negate y
+                _data[i + P_VX] >>= 1;
+                _data[i + P_VY] = -(_data[i + P_VY] >> 1);
+                _data[i + P_VZ] >>= 1;
             }
 
             _data[i + P_X] = x;
