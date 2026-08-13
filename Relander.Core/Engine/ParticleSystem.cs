@@ -378,7 +378,8 @@ public class ParticleSystem
         byte color = VidcColour.Encode(r, g, b);
         int flags = FLAG_ROCK | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY | FLAG_DESTROY | FLAG_BIG_SPLASH | FLAG_EXPLODE | color;
 
-        return AddMovingParticle(x, y, z, 0, 0, 0, 170, flags, 10, 27);
+        // velocityShift = 12 (smaller horizontal drift) so rock falls straight down in front of camera view
+        return AddMovingParticle(x, y, z, 0, 0, 0, 170, flags, 12, 27);
     }
 }
 

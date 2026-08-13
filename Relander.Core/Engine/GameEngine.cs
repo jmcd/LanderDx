@@ -186,7 +186,8 @@ public class GameEngine
         if (r0 < scoreDelta)
         {
             int x = _state.XCamera;
-            int y = -(FixedPoint.ROCK_HEIGHT + 1);
+            // Spawn 10 tiles above player altitude so falling rocks are immediately visible in camera view
+            int y = _state.YPlayer - FixedPoint.TILE_SIZE * 10;
             int z = _state.ZCamera - FixedPoint.PLAYER_FRONT_Z;
 
             _particles.DropRock(x, y, z);
