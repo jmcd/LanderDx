@@ -96,9 +96,9 @@ public static class ObjectRenderer
             // arithmetic wrapped and culled faces at random.
             if (rotates)
             {
-                long dot = (long)FixedPoint.Multiply(nx, objX)
-                         + (long)FixedPoint.Multiply(ny, objY)
-                         + (long)FixedPoint.Multiply(nz, objZ);
+                long dot = (long)FixedPoint.Multiply(objX, nx)
+                         + (long)FixedPoint.Multiply(objY, ny)
+                         + (long)FixedPoint.Multiply(objZ, nz);
                 if (dot >= 0) continue;
             }
 
@@ -132,6 +132,10 @@ public static class ObjectRenderer
         }
         // The original's GetDotProduct (Lander.arm:6116-6187) uses the quirky
         // shift-and-add multiply and accumulates in a wrapping 32-bit register.
-        return unchecked(FixedPoint.Multiply(x, mx) + FixedPoint.Multiply(y, my) + FixedPoint.Multiply(z, mz));
+        // OPERAND ORDER MATTERS: the first operand drives the carry pattern and
+        // the second supplies the magnitude — the original passes the matrix
+        // entry first and the vertex second. Swapped, small vertex coordinates
+        // collapse to near zero (the flat-ship bug).
+        return unchecked(FixedPoint.Multiply(mx, x) + FixedPoint.Multiply(my, y) + FixedPoint.Multiply(mz, z));
     }
 }

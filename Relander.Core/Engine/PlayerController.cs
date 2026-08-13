@@ -418,9 +418,9 @@ public class PlayerController
                 // linear in its second operand, so the sign of the exact 64-bit
                 // sum of unscaled products equals the sign of the original's
                 // scaled 32-bit accumulation (which never overflows by design).
-                long dot = (long)FixedPoint.Multiply(rnx, objX)
-                         + (long)FixedPoint.Multiply(rny, objY)
-                         + (long)FixedPoint.Multiply(rnz, objZ);
+                long dot = (long)FixedPoint.Multiply(objX, rnx)
+                         + (long)FixedPoint.Multiply(objY, rny)
+                         + (long)FixedPoint.Multiply(objZ, rnz);
                 if (dot >= 0) continue;  // Face points away from camera
             }
 
@@ -456,6 +456,12 @@ public class PlayerController
     {
         // The original's GetDotProduct (Lander.arm:6116-6187) uses the quirky
         // shift-and-add multiply and accumulates in a wrapping 32-bit register.
-        return unchecked(FixedPoint.Multiply(x, mx) + FixedPoint.Multiply(y, my) + FixedPoint.Multiply(z, mz));
+        // OPERAND ORDER MATTERS: the first operand drives the carry pattern and
+        // the second supplies the magnitude — the original passes the matrix
+        // entry first and the vertex second (R4 from [R2] = matrix, R5 from
+        // [R0] = vertex). Swapped, small vertex coordinates (like the ship's
+        // ~2^23 vertical extent) collapse to near zero and the ship renders
+        // flat as a pancake.
+        return unchecked(FixedPoint.Multiply(mx, x) + FixedPoint.Multiply(my, y) + FixedPoint.Multiply(mz, z));
     }
 }

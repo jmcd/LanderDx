@@ -57,6 +57,52 @@ public class PlayerOrientationTests
     }
 
     [Test]
+    public void Ship_ProjectsWithVerticalExtent()
+    {
+        // GetDotProduct's operand order matters: the original passes the MATRIX
+        // entry as the multiply's first operand (the carry source) and the
+        // vertex as the second (the magnitude source). Swapped, the ship's
+        // small vertical coordinates (canopy 0x00500000 ≈ 0.31 tiles) collapse
+        // to zero and the ship renders flat as a pancake.
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+
+        var gen = new LandscapeGenerator(state);
+        var buffers = new GraphicsBuffers();
+        var objectMap = new ObjectMap(gen, new RandomGenerator(42));
+        var player = new PlayerController(state, buffers, gen, objectMap);
+
+        player.Update(new TestInput());  // draws the ship at level flight
+        buffers.AddTerminators();
+
+        // The ship is drawn at z = LANDSCAPE_Z_MID (15 tiles) → buffer 6
+        int minY = int.MaxValue, maxY = int.MinValue;
+        var data = buffers.GetBufferData(6);
+        for (int i = 0; i < data.Length; i += 8)
+        {
+            if (data[i] != GraphicsBuffers.COMMAND_TRIANGLE) break;
+            for (int v = 0; v < 3; v++)
+            {
+                int y = data[i + 2 + v * 2];
+                minY = global::System.Math.Min(minY, y);
+                maxY = global::System.Math.Max(maxY, y);
+            }
+        }
+
+        // With the swapped operand order every vertex's rotated y collapses to
+        // zero and the ship's whole outline sits at one screen row (spread only
+        // by depth variance: ~112-117). With the original's order the canopy
+        // projects at ~119 and the undercarriage at ~106.
+        Assert.That(maxY, Is.GreaterThanOrEqualTo(118),
+            $"Canopy must project low on screen (maxY = {maxY}, extent {maxY - minY} px)");
+        Assert.That(minY, Is.LessThanOrEqualTo(108),
+            $"Undercarriage must project near the ground (minY = {minY})");
+        Assert.That(maxY, Is.GreaterThan(64),
+            "Ship vertices should sit below the horizon line (y = 64)");
+    }
+
+    [Test]
     public void ShipVertices_ProjectToScreen()
     {
         // Original model: canopy at +Y local (v0, y=+0x00500000), undercarriage at -Y local (v5, y=-0x00780000).

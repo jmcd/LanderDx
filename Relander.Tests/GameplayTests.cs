@@ -139,11 +139,17 @@ public class GameplayTests
     }
 
     [Test]
-    public void FastLowPass_OverLaunchpad_FliesOnWithoutCrash()
+    public void FastLowPass_OverLaunchpad_CrashesViaVertexTest()
     {
         // A fast skim over the pad inside the danger zone: the original's
         // LandOnLaunchpad returns without landing or crashing when the speed is
-        // too high (Lander.arm:2526-2532: CMP R3, #LANDING_SPEED / MOVHS PC, R14).
+        // too high (Lander.arm:2526-2532: CMP R3, #LANDING_SPEED / MOVHS PC, R14),
+        // so the vertex/shadow screen-space test is the arbiter — with the
+        // ship's true geometry any descent below the pad surface puts the
+        // undercarriage below its shadow and crashes in the same frame.
+        // (An earlier version of this test asserted no crash, but that was an
+        // artefact of the flat-ship multiply bug: the collapsed geometry could
+        // never reach its own shadow.)
         var random = new RandomGenerator(22);
         var screen = new TestScreen();
         var engine = new GameEngine(random, screen);
@@ -157,13 +163,10 @@ public class GameplayTests
         state.YVelocity = FixedPoint.LANDING_SPEED;  // too fast to land
         state.ZVelocity = 0;
 
-        bool alive = engine.Update(new TestInput());
+        engine.Update(new TestInput());
 
-        Assert.That(alive, Is.True, "Fast pass over the pad must not crash mid-air");
-        Assert.That(state.CrashLoopCount, Is.EqualTo(0),
-            "No crash: the vertex/shadow test is the arbiter for fast low passes");
-        Assert.That(state.YPlayer, Is.Not.EqualTo(FixedPoint.LAUNCHPAD_Y),
-            "Too fast to land — ship must not snap to the pad");
+        Assert.That(state.CrashLoopCount, Is.EqualTo(30),
+            "Too fast to land; the vertex/shadow test catches the descent below the pad surface");
     }
 
     [Test]
