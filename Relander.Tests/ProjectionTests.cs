@@ -114,10 +114,12 @@ public class ProjectionTests
     {
         Assert.That(Projection.IsOnScreen(160, 64), Is.True);
         Assert.That(Projection.IsOnScreen(0, 0), Is.True);
+        // SCREEN_MAX_Y = 239 (rasterizer renders up to y=239 inclusive)
+        Assert.That(Projection.IsOnScreen(319, 239), Is.True,  "y=239 is the last valid row");
         Assert.That(Projection.IsOnScreen(319, 238), Is.True);
         Assert.That(Projection.IsOnScreen(-1, 0), Is.False);
         Assert.That(Projection.IsOnScreen(0, -1), Is.False);
         Assert.That(Projection.IsOnScreen(320, 0), Is.False);
-        Assert.That(Projection.IsOnScreen(0, 239), Is.False);
+        Assert.That(Projection.IsOnScreen(0, 240), Is.False, "y=240 is one past the last valid row");
     }
 }

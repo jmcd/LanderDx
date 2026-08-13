@@ -10,7 +10,7 @@ public static class Projection
     public const int SCREEN_CENTER_X = 160;
     public const int SCREEN_CENTER_Y = 64;
     public const int SCREEN_MAX_X = 319;
-    public const int SCREEN_MAX_Y = 238;  // Play area: rows 16-255, 0-indexed in buffer is 0-238
+    public const int SCREEN_MAX_Y = 239;  // Play area: rows 16-255, 0-indexed in buffer is 0-239 (rasterizer height = 240)
 
     /// <summary>
     /// Project a 3D camera-relative point to screen coordinates.
