@@ -373,7 +373,7 @@ public class PlayerController
         // Draw faces
         foreach (var face in blueprint.Faces)
         {
-            // Rotated normal in world space — used for both culling and shading
+            // Rotated normal in world space — used for culling, shading and shadowing
             int rnx = face.Normal.X, rny = face.Normal.Y, rnz = face.Normal.Z;
             if (isRotating)
             {
@@ -381,23 +381,40 @@ public class PlayerController
                 rnx = DotProduct(nx, ny, nz, _state.XNoseV, _state.XRoofV, _state.XSideV);
                 rny = DotProduct(nx, ny, nz, _state.YNoseV, _state.YRoofV, _state.YSideV);
                 rnz = DotProduct(nx, ny, nz, _state.ZNoseV, _state.ZRoofV, _state.ZSideV);
-
-                // Back-face culling for rotating objects. The original scales the
-                // object coordinates up and uses GetDotProduct (Lander.arm:5024-5081)
-                // — the quirky multiply is linear in its second operand, so the sign
-                // of the exact 64-bit sum of unscaled products equals the sign of
-                // the original's scaled 32-bit accumulation (which never overflows
-                // by design).
-                long dot = (long)FixedPoint.Multiply(rnx, objX)
-                         + (long)FixedPoint.Multiply(rny, objY)
-                         + (long)FixedPoint.Multiply(rnz, objZ);
-                if (dot >= 0) continue;  // Face points away from camera
             }
 
             // Get projected vertices
             var pv1 = projectedVertices[face.V1];
             var pv2 = projectedVertices[face.V2];
             var pv3 = projectedVertices[face.V3];
+
+            // Shadow first (Lander.arm:5385-5418): drawn BEFORE the visibility
+            // test, and only for faces whose rotated normal points up (y < 0) —
+            // so up-pointing back-facing faces still cast shadows and
+            // down-pointing faces (like the ship's undercarriage) never do.
+            if (blueprint.HasShadow && rny < 0)
+            {
+                int shadowIdx = _buffers.GetShadowBufferIndex(objZ);
+                _buffers.AddTriangle(shadowIdx,
+                    pv1.shadowX, pv1.shadowY,
+                    pv2.shadowX, pv2.shadowY,
+                    pv3.shadowX, pv3.shadowY,
+                    0);  // Black shadow
+            }
+
+            // Back-face culling for rotating objects
+            if (isRotating)
+            {
+                // The original scales the object coordinates up and uses
+                // GetDotProduct (Lander.arm:5024-5081) — the quirky multiply is
+                // linear in its second operand, so the sign of the exact 64-bit
+                // sum of unscaled products equals the sign of the original's
+                // scaled 32-bit accumulation (which never overflows by design).
+                long dot = (long)FixedPoint.Multiply(rnx, objX)
+                         + (long)FixedPoint.Multiply(rny, objY)
+                         + (long)FixedPoint.Multiply(rnz, objZ);
+                if (dot >= 0) continue;  // Face points away from camera
+            }
 
             // Shading uses the ROTATED normal (Lander.arm:5504-5508: yVertex and
             // xVertex hold the normal after MultiplyVectorByMatrix), so the ship's
@@ -424,17 +441,6 @@ public class PlayerController
             // Draw triangle into buffer
             _buffers.AddTriangle(bufferIdx,
                 pv1.x, pv1.y, pv2.x, pv2.y, pv3.x, pv3.y, colourWord);
-
-            // Draw shadow if applicable
-            if (blueprint.HasShadow)
-            {
-                int shadowIdx = _buffers.GetShadowBufferIndex(objZ);
-                _buffers.AddTriangle(shadowIdx,
-                    pv1.shadowX, pv1.shadowY,
-                    pv2.shadowX, pv2.shadowY,
-                    pv3.shadowX, pv3.shadowY,
-                    0);  // Black shadow
-            }
         }
     }
 

@@ -23,17 +23,6 @@ public static class ObjectRenderer
                 nx = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 0, state);
                 ny = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 1, state);
                 nz = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 2, state);
-
-                // Back-face culling for rotating objects. The original scales the
-                // object coordinates up and uses GetDotProduct (Lander.arm:5024-5081);
-                // the quirky multiply is linear in its second operand, so the sign
-                // of the exact 64-bit sum of unscaled products equals the sign of
-                // the original's scaled 32-bit accumulation. The previous plain int
-                // arithmetic wrapped and culled faces at random.
-                long dot = (long)FixedPoint.Multiply(nx, objX)
-                         + (long)FixedPoint.Multiply(ny, objY)
-                         + (long)FixedPoint.Multiply(nz, objZ);
-                if (dot >= 0) continue;
             }
             else
             {
@@ -72,24 +61,11 @@ public static class ObjectRenderer
             int wx2 = rx2 + objX, wy2 = ry2 + objY, wz2 = rz2 + objZ;
             int wx3 = rx3 + objX, wy3 = ry3 + objY, wz3 = rz3 + objZ;
 
-            if (!Projection.Project(wx1, wy1, wz1, out int sx1, out int sy1)) continue;
-            if (!Projection.Project(wx2, wy2, wz2, out int sx2, out int sy2)) continue;
-            if (!Projection.Project(wx3, wy3, wz3, out int sx3, out int sy3)) continue;
-
-            int shade = (int)((0x80000000u - (uint)ny) >> 28);
-            if (nx < 0) shade++;
-            shade = global::System.Math.Max(0, shade - 5);
-            int r = global::System.Math.Min(((face.Colour >> 8) & 0xF) + shade, 15);
-            int g = global::System.Math.Min(((face.Colour >> 4) & 0xF) + shade, 15);
-            int b = global::System.Math.Min((face.Colour & 0xF) + shade, 15);
-
-            byte vidc = VidcColour.Encode(r, g, b);
-            int colourWord = VidcColour.ReplicateQuad(vidc);
-
-            int bufIdx = buffers.GetBufferIndex(objZ);
-            buffers.AddTriangle(bufIdx, sx1, sy1, sx2, sy2, sx3, sy3, colourWord);
-
-            if (blueprint.HasShadow)
+            // Shadow first (Lander.arm:5385-5418): drawn BEFORE the visibility
+            // test, and only for faces whose rotated normal points up (y < 0) —
+            // so up-pointing back-facing faces still cast shadows and
+            // down-pointing faces never do.
+            if (blueprint.HasShadow && ny < 0)
             {
                 int worldVX1 = worldX + rx1;
                 int worldVZ1 = worldZ + rz1;
@@ -111,6 +87,37 @@ public static class ObjectRenderer
                     buffers.AddTriangle(shadowBufIdx, shadowX1, shadowY1, shadowX2, shadowY2, shadowX3, shadowY3, 0);
                 }
             }
+
+            // Back-face culling for rotating objects. The original scales the
+            // object coordinates up and uses GetDotProduct (Lander.arm:5024-5081);
+            // the quirky multiply is linear in its second operand, so the sign
+            // of the exact 64-bit sum of unscaled products equals the sign of
+            // the original's scaled 32-bit accumulation. The previous plain int
+            // arithmetic wrapped and culled faces at random.
+            if (rotates)
+            {
+                long dot = (long)FixedPoint.Multiply(nx, objX)
+                         + (long)FixedPoint.Multiply(ny, objY)
+                         + (long)FixedPoint.Multiply(nz, objZ);
+                if (dot >= 0) continue;
+            }
+
+            if (!Projection.Project(wx1, wy1, wz1, out int sx1, out int sy1)) continue;
+            if (!Projection.Project(wx2, wy2, wz2, out int sx2, out int sy2)) continue;
+            if (!Projection.Project(wx3, wy3, wz3, out int sx3, out int sy3)) continue;
+
+            int shade = (int)((0x80000000u - (uint)ny) >> 28);
+            if (nx < 0) shade++;
+            shade = global::System.Math.Max(0, shade - 5);
+            int r = global::System.Math.Min(((face.Colour >> 8) & 0xF) + shade, 15);
+            int g = global::System.Math.Min(((face.Colour >> 4) & 0xF) + shade, 15);
+            int b = global::System.Math.Min((face.Colour & 0xF) + shade, 15);
+
+            byte vidc = VidcColour.Encode(r, g, b);
+            int colourWord = VidcColour.ReplicateQuad(vidc);
+
+            int bufIdx = buffers.GetBufferIndex(objZ);
+            buffers.AddTriangle(bufIdx, sx1, sy1, sx2, sy2, sx3, sy3, colourWord);
         }
     }
 

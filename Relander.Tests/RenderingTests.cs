@@ -400,6 +400,49 @@ public class RenderingTests
 
 
     [Test]
+    public void StaticObject_ShadowsOnlyForUpFacingNormals()
+    {
+        // The original draws shadows BEFORE the face-visibility test and only
+        // for faces whose rotated normal points up, y < 0 (Lander.arm:5385-5418:
+        // CMP R1, #0 / BPL dobj4). The previous code drew a shadow for every
+        // drawn face, so down-pointing faces wrongly cast shadows.
+        var state = new GameState();
+        state.Initialize();
+        state.XCamera = 0;
+        state.YCamera = 0;
+        state.ZCamera = 0;
+
+        var landscape = new LandscapeGenerator(state);
+        var buffers = new GraphicsBuffers();
+
+        // SmallLeafyTree: static, has shadow, 5 faces
+        var tree = ObjectBlueprints.SmallLeafyTree;
+        int upFacing = tree.Faces.Count(f => f.Normal.Y < 0);
+        Assert.That(upFacing, Is.InRange(1, tree.FaceCount - 1),
+            "Precondition: a mix of up- and down-facing faces");
+
+        ObjectRenderer.DrawObject(tree, 0, 0, FixedPoint.LANDSCAPE_Z_MID, 0, 0, state, buffers, landscape);
+        buffers.AddTerminators();
+
+        // Shadow triangles have colour word 0 and live in the shadow buffer
+        // (one buffer behind the face buffer). Count triangles with colour 0.
+        int faceBuffer = buffers.GetBufferIndex(FixedPoint.LANDSCAPE_Z_MID);
+        int shadowBuffer = buffers.GetShadowBufferIndex(FixedPoint.LANDSCAPE_Z_MID);
+        var shadowData = buffers.GetBufferData(shadowBuffer);
+        int shadowTriangles = 0;
+        for (int i = 0; i < shadowData.Length; i += 8)
+        {
+            if (shadowData[i] != GraphicsBuffers.COMMAND_TRIANGLE) break;
+            shadowTriangles++;
+        }
+
+        Assert.That(shadowTriangles, Is.EqualTo(upFacing),
+            $"Only up-facing faces cast shadows: {upFacing} expected, {shadowTriangles} drawn");
+        Assert.That(buffers.GetBufferData(faceBuffer).Length, Is.GreaterThan(0),
+            "The tree's faces themselves are still drawn");
+    }
+
+    [Test]
     public void FaceShading_IsNotClampedToThree()
     {
         // The original's brightness is (0x80000000 - ny) >> 28 + (nx < 0) - 5
