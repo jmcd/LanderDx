@@ -52,13 +52,4 @@ public static class Projection
         return (uint)screenX <= SCREEN_MAX_X && (uint)screenY <= SCREEN_MAX_Y;
     }
 
-    /// <summary>
-    /// Compute the z-depth buffer index for a given camera-relative z coordinate.
-    /// Higher z = closer to camera = lower buffer index (drawn later).
-    /// </summary>
-    public static int GetDepthIndex(int z, int landscapeZ)
-    {
-        int offset = landscapeZ - z;
-        return (int)((uint)offset >> 24) & 0xFF;
-    }
 }
