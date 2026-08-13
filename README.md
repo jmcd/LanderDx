@@ -129,8 +129,8 @@ GameEngine.Update(input):
   4. DrawVisibleObjects: iterate object map, draw 3D objects into buffers
   5. GraphicsBuffers.AddTerminators: write terminators, reset for next frame
   6. DrawLandscapeAndBuffers: back-to-front landscape tile grid + buffer contents
-  7. RenderScoreBar: fuel bar
-  8. CopyToScreen: framebuffer → screen interface
+  7. CopyToScreen: framebuffer → screen interface
+  8. RenderScoreBar: title, fuel bar and stats onto the top 16 rows
 ```
 
 ### Rotation Matrix
@@ -282,7 +282,8 @@ Particles are drawn as single pixels (or small blocks for close particles) into 
 - Initial fuel: 3413 units (`0x0D55`)
 - Max fuel: 5120 units (`0x1400`)
 - Fuel burn: `fuelBurnRate` units per frame (0=none, 1=fire, 2=hover, 4=full thrust)
-- Fire does not consume fuel (bit 0 ignored in fuel calculation)
+- Fire consumes 1 fuel unit: the original subtracts the full burn rate
+  including bit 0 (`SUBS R1, R1, R2`, `Lander.arm:5892-5897`)
 - Refuel on launchpad: +32 units/frame
 - Initial score: 500 (also the bullet count)
 - -1 per bullet fired, +20 per object destroyed
@@ -311,8 +312,9 @@ The conversion uses a single `byte[320×256]` framebuffer. The top 16 pixel rows
 ### Known Differences from Original
 
 1. **Controls**: Keyboard instead of mouse (original used Archimedes mouse with polar coordinate conversion and damping)
-2. **Frame rate**: Unlocked (original ran at approximately 12.5 FPS tied to VSync on the Archimedes)
+2. **Frame rate**: Locked to the original's ~12.5 FPS via a fixed-step accumulator in `Program.cs`; the display runs at its own refresh rate
 3. **Sound**: None (original had no sound either)
-4. **Rock dropping**: Not yet implemented (score threshold logic exists but no rock spawning)
+4. **Game over**: The original blocks until a key press before restarting; the port shows the same message and waits for a key
+5. **Minimap**: A Zarch/Virus-inspired radar overlay (Tab/R to toggle) has no original counterpart
 
 
