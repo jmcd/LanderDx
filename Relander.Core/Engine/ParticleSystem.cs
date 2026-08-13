@@ -370,14 +370,23 @@ public class ParticleSystem
             15, FLAG_BOUNCE | smokeColor, 13, 25);
     }
 
-    /// <summary>Splash a particle into the sea (Lander.arm:3413-3436).</summary>
+    /// <summary>
+    /// Splash a particle into the sea (Lander.arm:3413-3436, AddSprayParticleToBuffer
+    /// at 4295-4406): blue shades (blue = (rand & 3) + 12, red = green = (rand & 4) + 8),
+    /// gravity only — the spray falls straight down and is deleted at the sea surface
+    /// (no bounce bit, so BounceParticle's delete branch removes it) — lifespan
+    /// 20 + rand >> 26, velocity jitter at shift 10, starting stationary.
+    /// </summary>
     public void AddSplash(int x, int y, int z, bool big)
     {
         int count = big ? 65 : 4;
-        byte splashColor = VidcColour.Encode(15, 15, 15);
         for (int i = 0; i < count; i++)
         {
-            AddMovingParticle(x, y - (FixedPoint.TILE_SIZE >> 4), z, 0, -0x300000, 0, 10, FLAG_GRAVITY | FLAG_BOUNCE | splashColor, 9, 29);
+            var (rand0, _) = _random.GetRandomNumbers();
+            int blue = (rand0 & 3) + 12;
+            int grey = (rand0 & 4) + 8;
+            byte splashColor = VidcColour.Encode(grey, grey, blue);
+            AddMovingParticle(x, y - FixedPoint.SPLASH_HEIGHT, z, 0, 0, 0, 20, FLAG_GRAVITY | splashColor, 10, 26);
         }
     }
 

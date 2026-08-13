@@ -607,6 +607,47 @@ public class ParticleTests
     }
 
     [Test]
+    public void SeaSpray_IsBlueFallingParticleWithoutBounce()
+    {
+        // AddSprayParticleToBuffer (Lander.arm:4295-4406): blue shades
+        // (blue 12-15, red = green = 8 or 12), gravity flag only, zero initial
+        // velocity, life 20 + rand >> 26, jitter shift 10. Spray falls straight
+        // down and is deleted at the sea (no bounce/splash bits).
+        var state = new GameState();
+        state.Initialize();
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        particles.AddSplash(0, 0, 0, big: false);
+        Assert.That(particles.Count, Is.EqualTo(4), "Small splash = 4 spray particles");
+
+        for (int idx = 0; idx < 4; idx++)
+        {
+            var p = particles.GetParticle(idx);
+            Assert.That(p.Flags & ParticleSystem.FLAG_GRAVITY, Is.Not.EqualTo(0));
+            Assert.That(p.Flags & ParticleSystem.FLAG_BOUNCE, Is.EqualTo(0),
+                "Spray must not bounce on the sea surface");
+            Assert.That(p.Flags & ParticleSystem.FLAG_SPLASH, Is.EqualTo(0),
+                "Spray must not re-splash");
+            byte colour = (byte)(p.Flags & 0xFF);
+            var (r, g, b) = VidcColour.DecodeToRgb24(colour);
+            Assert.That(r, Is.EqualTo(g), "Red equals green");
+            // VIDC bits 4 and 6 are the red and green bit-3s; the shared low bits
+            // (1,0) of the blue channel bleed into the decoded red/green, so pin
+            // the encoded channel bits instead of the lossy decode.
+            Assert.That((colour >> 4) & 1, Is.EqualTo((colour >> 6) & 1),
+                "Red bit 3 equals green bit 3 (both 8 or both 12)");
+            Assert.That(b / 17, Is.InRange(12, 15), "Blue 12..15");
+            Assert.That(p.VY, Is.InRange(-0x400000, 0x400000),
+                "No initial upward jump, only jitter at shift 10");
+            Assert.That(p.Life, Is.InRange(20, 20 + 63), "Life 20 + rand >> 26");
+        }
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);
