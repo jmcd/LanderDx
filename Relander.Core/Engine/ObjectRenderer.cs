@@ -24,12 +24,15 @@ public static class ObjectRenderer
                 ny = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 1, state);
                 nz = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 2, state);
 
-                // Back-face culling for rotating objects. The products exceed
-                // int32 (objX and normals reach ~1e9), so compute the exact sign
-                // in 64-bit — the original pre-scales coordinates to keep the
-                // products inside 32 bits (Lander.arm:5024-5081). The previous
-                // int arithmetic wrapped and culled faces at random.
-                long dot = (long)objX * nx + (long)objY * ny + (long)objZ * nz;
+                // Back-face culling for rotating objects. The original scales the
+                // object coordinates up and uses GetDotProduct (Lander.arm:5024-5081);
+                // the quirky multiply is linear in its second operand, so the sign
+                // of the exact 64-bit sum of unscaled products equals the sign of
+                // the original's scaled 32-bit accumulation. The previous plain int
+                // arithmetic wrapped and culled faces at random.
+                long dot = (long)FixedPoint.Multiply(nx, objX)
+                         + (long)FixedPoint.Multiply(ny, objY)
+                         + (long)FixedPoint.Multiply(nz, objZ);
                 if (dot >= 0) continue;
             }
             else
@@ -120,6 +123,8 @@ public static class ObjectRenderer
             case 1: mx = state.YNoseV; my = state.YRoofV; mz = state.YSideV; break;
             default: mx = state.ZNoseV; my = state.ZRoofV; mz = state.ZSideV; break;
         }
-        return (int)(((long)x * mx + (long)y * my + (long)z * mz) >> 31);
+        // The original's GetDotProduct (Lander.arm:6116-6187) uses the quirky
+        // shift-and-add multiply and accumulates in a wrapping 32-bit register.
+        return unchecked(FixedPoint.Multiply(x, mx) + FixedPoint.Multiply(y, my) + FixedPoint.Multiply(z, mz));
     }
 }

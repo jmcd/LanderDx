@@ -97,14 +97,14 @@ public class PlayerController
         // [ yNoseV yRoofV ySideV ] = [     sinA        cosA        0  ]
         // [ zNoseV zRoofV zSideV ]   [ -cosA*sinB   sinA*sinB   cosB ]
 
-        _state.XNoseV = MulFixed(cosA, cosB);
-        _state.XRoofV = -MulFixed(sinA, cosB);
+        _state.XNoseV = FixedPoint.Multiply(cosA, cosB);
+        _state.XRoofV = -FixedPoint.Multiply(sinA, cosB);
         _state.XSideV = sinB;
         _state.YNoseV = sinA;
         _state.YRoofV = cosA;
         _state.YSideV = 0;
-        _state.ZNoseV = -MulFixed(cosA, sinB);
-        _state.ZRoofV = MulFixed(sinA, sinB);
+        _state.ZNoseV = -FixedPoint.Multiply(cosA, sinB);
+        _state.ZRoofV = FixedPoint.Multiply(sinA, sinB);
         _state.ZSideV = cosB;
     }
 
@@ -116,11 +116,8 @@ public class PlayerController
         return SineTable.Data[index];
     }
 
-    // Fixed-point multiply: (a * b) >> 31
-    private static int MulFixed(int a, int b)
-    {
-        return (int)((long)a * b >> 31);
-    }
+    // Fixed-point multiply: the original's quirky shift-and-add routine
+    // (Lander.arm:6412-6447) — see FixedPoint.Multiply.
 
     // ---- Physics update (Lander.arm:1910-2050) ----
 
@@ -364,8 +361,15 @@ public class PlayerController
                 rny = DotProduct(nx, ny, nz, _state.YNoseV, _state.YRoofV, _state.YSideV);
                 rnz = DotProduct(nx, ny, nz, _state.ZNoseV, _state.ZRoofV, _state.ZSideV);
 
-                // Back-face culling for rotating objects
-                long dot = (long)objX * rnx + (long)objY * rny + (long)objZ * rnz;
+                // Back-face culling for rotating objects. The original scales the
+                // object coordinates up and uses GetDotProduct (Lander.arm:5024-5081)
+                // — the quirky multiply is linear in its second operand, so the sign
+                // of the exact 64-bit sum of unscaled products equals the sign of
+                // the original's scaled 32-bit accumulation (which never overflows
+                // by design).
+                long dot = (long)FixedPoint.Multiply(rnx, objX)
+                         + (long)FixedPoint.Multiply(rny, objY)
+                         + (long)FixedPoint.Multiply(rnz, objZ);
                 if (dot >= 0) continue;  // Face points away from camera
             }
 
@@ -415,6 +419,8 @@ public class PlayerController
 
     private static int DotProduct(int x, int y, int z, int mx, int my, int mz)
     {
-        return (int)(((long)x * mx + (long)y * my + (long)z * mz) >> 31);
+        // The original's GetDotProduct (Lander.arm:6116-6187) uses the quirky
+        // shift-and-add multiply and accumulates in a wrapping 32-bit register.
+        return unchecked(FixedPoint.Multiply(x, mx) + FixedPoint.Multiply(y, my) + FixedPoint.Multiply(z, mz));
     }
 }

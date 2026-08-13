@@ -180,4 +180,66 @@ public static class FixedPoint
 
     /// <summary>Object destruction explosion cluster count.</summary>
     public const int DESTROY_EXPLOSION_CLUSTERS = 20;
+
+    /// <summary>
+    /// Faithful port of the original's shift-and-add multiplication, used to
+    /// build the rotation matrix (Lander.arm:6412-6447, .rmat1) and for every
+    /// matrix/vector product (GetDotProduct, Lander.arm:6116-6187, .dotp1).
+    ///
+    /// The routine is NOT an exact (a * b) >> 31: the carry consumed by ADDHS
+    /// comes from the previous flag-setting shift (the documented "if bit 0 of
+    /// R3 is set" describes an imaginary MOVS R3). Instruction-by-instruction,
+    /// with R2 = multiplicand, R3 = multiplier:
+    ///
+    ///   R14 = A XOR B                        (sign of the result)
+    ///   R2 = 4 * |A|, C = bit 30 of |A|      (MOVS R2, R2, LSL #2)
+    ///   R3 = 2 * |B|                         (MOV sets no flags)
+    ///   R2 = (R2 AND &FE000000) OR &01000000
+    ///   R4 = 0
+    ///   loop: R3 = R3 LSR #1; ADDHS R4 += R3 (carry from previous shift);
+    ///         C = bit 31 of R2; R2 = R2 LSL #1; exit when R2 = 0 (BNE)
+    ///   R4 = R4 LSR #1; negate if R14 negative
+    ///
+    /// The TEQ/RSBMI/MOV/AND/ORR instructions between the shifts leave the
+    /// carry untouched, so the first ADDHS consumes the carry from the initial
+    /// MOVS (bit 30 of |A|) and later iterations consume the carry of the
+    /// previous MOVS R2, R2, LSL #1. The loop runs exactly 8 times (bit 24 of
+    /// R2 is always set and shifts out last).
+    ///
+    /// Reference outputs (verified by instruction-level simulation):
+    ///   Multiply(0x7FFFFFFF, 0x7FFFFFFF) = 0x7F7FFFFC
+    ///   Multiply(0x40000000, 0x12345678) = 0x091A2B3C
+    ///   Multiply(0x12345678, 0x40000000) = 0x09000000
+    ///   Multiply(0x5A827999, 0x7FFFFFFF) = 0x5A7FFFFD
+    /// </summary>
+    public static int Multiply(int a, int b)
+    {
+        uint sign = (uint)(a ^ b);              // EOR R14, R2, R3 — sign of the result
+        bool negative = (sign >> 31) != 0;
+
+        uint ua = (uint)a;                      // TEQ R2, #0 / RSBMI R2, R2, #0
+        if ((ua >> 31) != 0) ua = ~ua + 1;      // (no saturation for -2^31, as on ARM)
+
+        uint carry = (ua >> 30) & 1;            // MOVS R2, R2, LSL #2: C = bit 30 of |A|
+        uint r2 = ((ua << 2) & 0xFE000000u) | 0x01000000u;
+
+        uint ub = (uint)b;                      // TEQ R3, #0 / RSBMI R3, R3, #0
+        if ((ub >> 31) != 0) ub = ~ub + 1;
+        uint r3 = ub << 1;                      // MOV R3, R3, LSL #1 — no flags
+
+        uint r4 = 0;                            // MOV R4, #0
+        while (true)
+        {
+            r3 >>= 1;                           // MOV R3, R3, LSR #1 — no flags
+            if (carry != 0)                     // ADDHS R4, R4, R3
+                r4 += r3;
+            carry = r2 >> 31;                   // MOVS R2, R2, LSL #1: C = bit 31
+            r2 <<= 1;
+            if (r2 == 0) break;                 // BNE rmat1
+        }
+        r4 >>= 1;                               // MOV R4, R4, LSR #1
+
+        uint result = negative ? ~r4 + 1 : r4;  // TEQ R14, #0 / RSBMI R4, R4, #0
+        return (int)result;
+    }
 }
