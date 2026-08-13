@@ -69,6 +69,10 @@ public class GameEngine
         // is the loop's R8 counter), as in the original.
         if (_state.PlayingGame == 0)
         {
+            // The original's crash loop calls PrintCurrentScore every iteration
+            // (Lander.arm:2661-2665), which updates gravity from the score — the
+            // explosion particles fall with current gravity during the animation.
+            _state.UpdateGravity();
             _particles.UpdateAndDraw();
             DrawVisibleObjects();
             _buffers.AddTerminators();
