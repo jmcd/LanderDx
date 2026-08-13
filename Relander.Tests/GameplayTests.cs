@@ -350,4 +350,62 @@ public class GameplayTests
         Assert.That(engine.State.FuelBurnRate & 4, Is.Not.EqualTo(0),
             "Thrust bit should be set when Thrust is pressed");
     }
+
+    // ---- Rock dropping tests ----
+
+    [Test]
+    public void ScoreBelow800_DoesNotSpawnRocks()
+    {
+        var random = new RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+        engine.State.CurrentScore = 799;
+
+        // Run 10 frames with score 799
+        for (int i = 0; i < 10; i++)
+        {
+            engine.Update(new TestInput());
+        }
+
+        Assert.That(engine.State.CrashedFlag, Is.EqualTo(0), "No rock crash should occur at score 799");
+    }
+
+    [Test]
+    public void ParticleSystem_DropRock_SpawnsRockParticle()
+    {
+        var state = new GameState();
+        var landscape = new LandscapeGenerator(state);
+        var random = new RandomGenerator(42);
+        var objMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objMap, buffers, random);
+
+        bool spawned = particles.DropRock(0, 0, 0);
+
+        Assert.That(spawned, Is.True, "DropRock should successfully spawn a particle");
+        Assert.That(particles.Count, Is.EqualTo(1), "Particle count should be 1 after DropRock");
+    }
+
+    [Test]
+    public void RockCollidingWithPlayer_TriggersCrash()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+
+        var landscape = new LandscapeGenerator(state);
+        var random = new RandomGenerator(42);
+        var objMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objMap, buffers, random);
+
+        // Spawn a rock right at the player's position
+        particles.DropRock(state.XPlayer, state.YPlayer, state.ZPlayer);
+
+        // Update and draw particles to trigger rock collision check
+        particles.UpdateAndDraw();
+
+        Assert.That(state.CrashedFlag, Is.Not.EqualTo(0), "Rock colliding with player should set CrashedFlag");
+    }
 }

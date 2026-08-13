@@ -201,6 +201,36 @@ public class ParticleSystem
 
     private void DrawParticle(int x, int y, int z, int flags)
     {
+        // 3D Rock particle handling (Lander.arm:2930-3025)
+        if ((flags & FLAG_ROCK) != 0)
+        {
+            // 1. Rock vs player ship collision check
+            if (_state.PlayingGame != 0)
+            {
+                int relX = global::System.Math.Abs(x - _state.XPlayer);
+                int relZ = global::System.Math.Abs(z - _state.ZPlayer);
+                int relY = global::System.Math.Abs(y - _state.YPlayer);
+
+                if (relX < FixedPoint.TILE_SIZE && relZ < FixedPoint.TILE_SIZE && relY < FixedPoint.TILE_SIZE)
+                {
+                    _state.CrashedFlag = -1;  // Hit by falling rock!
+                }
+            }
+
+            // 2. Draw 3D rock object using ObjectBlueprints.Rock
+            int rockObjX = x - _state.XCamera;
+            int rockObjY = y - _state.YCamera;
+            int rockObjZ = z - _state.ZCamera + FixedPoint.LANDSCAPE_Z;
+
+            // Visibility culling
+            if ((uint)rockObjZ >= (uint)FixedPoint.LANDSCAPE_Z) return;
+            if (rockObjZ < FixedPoint.LANDSCAPE_Z_FRONT) return;
+            if (global::System.Math.Abs(rockObjX) >= FixedPoint.LANDSCAPE_X_HALF) return;
+
+            ObjectRenderer.DrawObject(ObjectBlueprints.Rock, rockObjX, rockObjY, rockObjZ, x, z, _state, _buffers, _landscape);
+            return;
+        }
+
         // Convert to camera-relative
         int cx = x - _state.XCamera;
         int cy = y - _state.YCamera;
@@ -330,6 +360,23 @@ public class ParticleSystem
             byte smokeColor = VidcColour.Encode(8, 8, 8);
             AddMovingParticle(x, y, z, 0, -0x80000, 0, 24, FLAG_FADE | smokeColor, 9, 28);
         }
+    }
+
+    /// <summary>
+    /// Drop a rock from the sky (Lander.arm:4103-4224).
+    /// Spawns a rock particle with FLAG_ROCK bit set and random purple-brownish color.
+    /// </summary>
+    public bool DropRock(int x, int y, int z)
+    {
+        var (rand0, rand1) = _random.GetRandomNumbers();
+        int r = (rand0 & 7) + 4;
+        int g = (int)(((uint)rand1 >> 29) + 2);
+        int b = (int)(((uint)rand0 >> 30) + 4);
+
+        byte color = VidcColour.Encode(r, g, b);
+        int flags = FLAG_ROCK | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY | FLAG_DESTROY | FLAG_BIG_SPLASH | FLAG_EXPLODE | color;
+
+        return AddMovingParticle(x, y, z, 0, 0, 0, 170, flags, 10, 27);
     }
 }
 

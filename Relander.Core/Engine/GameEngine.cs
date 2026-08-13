@@ -110,8 +110,11 @@ public class GameEngine
                 _state.XVelocity, _state.YVelocity, _state.ZVelocity,
                 _state.XNoseV, _state.YNoseV, _state.ZNoseV);
 
+        // 4. Random rock dropping if score >= 800 (Lander.arm:4570-4630)
+        if (_state.PlayingGame != 0)
+            DropRocksFromTheSky();
 
-        // 4. Particles update + draw into buffers
+        // 5. Particles update + draw into buffers
         _particles.UpdateAndDraw();
 
         // 5. Draw objects (trees, buildings) into buffers
@@ -163,118 +166,31 @@ public class GameEngine
                 // At camera back: z ≈ LANDSCAPE_Z; at player: z = LANDSCAPE_Z_MID
                 int objZ = FixedPoint.LANDSCAPE_Z - _state.ZCamera + worldZ;
 
-                DrawObject(blueprint, objX, objY, objZ);
+                ObjectRenderer.DrawObject(blueprint, objX, objY, objZ, worldX, worldZ, _state, _buffers, _landscape);
             }
         }
     }
 
-    private void DrawObject(ObjectBlueprint blueprint, int objX, int objY, int objZ)
+    /// <summary>
+    /// Randomly drop rocks from the sky if score >= 800 (Lander.arm:4570-4630).
+    /// </summary>
+    private void DropRocksFromTheSky()
     {
-        bool rotates = blueprint.Rotates;
+        if (_state.CurrentScore < 800) return;
 
-        // Reconstruct world position for shadow computation
-        int worldObjX = objX + _state.XCamera;
-        int worldObjZ = objZ - FixedPoint.LANDSCAPE_Z + _state.ZCamera;
+        int scoreDelta = _state.CurrentScore - 800;
 
-        foreach (var face in blueprint.Faces)
+        var (rand0, rand1) = _random.GetRandomNumbers();
+        int r0 = (int)((uint)rand0 >> 18); // 0..16383
+
+        if (r0 < scoreDelta)
         {
-            // Back-face culling for rotating objects only
-            if (rotates)
-            {
-                // Dot product of camera→object with face normal
-                int dot = objX * face.Normal.X + objY * face.Normal.Y + objZ * face.Normal.Z;
-                if (dot >= 0) continue;  // Facing away
-            }
+            int x = _state.XCamera;
+            int y = -(FixedPoint.ROCK_HEIGHT + 1);
+            int z = _state.ZCamera - FixedPoint.PLAYER_FRONT_Z;
 
-            var v1 = blueprint.Vertices[face.V1];
-            var v2 = blueprint.Vertices[face.V2];
-            var v3 = blueprint.Vertices[face.V3];
-
-            // Rotate vertices for rotating objects
-            int rx1, ry1, rz1, rx2, ry2, rz2, rx3, ry3, rz3;
-            if (rotates)
-            {
-                rx1 = DotMatrix(v1.X, v1.Y, v1.Z, 0); ry1 = DotMatrix(v1.X, v1.Y, v1.Z, 1); rz1 = DotMatrix(v1.X, v1.Y, v1.Z, 2);
-                rx2 = DotMatrix(v2.X, v2.Y, v2.Z, 0); ry2 = DotMatrix(v2.X, v2.Y, v2.Z, 1); rz2 = DotMatrix(v2.X, v2.Y, v2.Z, 2);
-                rx3 = DotMatrix(v3.X, v3.Y, v3.Z, 0); ry3 = DotMatrix(v3.X, v3.Y, v3.Z, 1); rz3 = DotMatrix(v3.X, v3.Y, v3.Z, 2);
-            }
-            else
-            {
-                rx1 = v1.X; ry1 = v1.Y; rz1 = v1.Z;
-                rx2 = v2.X; ry2 = v2.Y; rz2 = v2.Z;
-                rx3 = v3.X; ry3 = v3.Y; rz3 = v3.Z;
-            }
-
-            // World space
-            int wx1 = rx1 + objX, wy1 = ry1 + objY, wz1 = rz1 + objZ;
-            int wx2 = rx2 + objX, wy2 = ry2 + objY, wz2 = rz2 + objZ;
-            int wx3 = rx3 + objX, wy3 = ry3 + objY, wz3 = rz3 + objZ;
-
-            // Project
-            if (!Projection.Project(wx1, wy1, wz1, out int sx1, out int sy1)) continue;
-            if (!Projection.Project(wx2, wy2, wz2, out int sx2, out int sy2)) continue;
-            if (!Projection.Project(wx3, wy3, wz3, out int sx3, out int sy3)) continue;
-
-            // Shading: brightness from face normal (light above-left)
-            // ALWAYS computed from yNormal — not conditional on sign
-            int shade = (int)((0x80000000u - (uint)face.Normal.Y) >> 28);
-            if (face.Normal.X < 0) shade++;
-            shade = global::System.Math.Max(0, shade - 5);
-            if (shade > 3) shade = 3;
-            int r = global::System.Math.Min(((face.Colour >> 8) & 0xF) + shade, 15);
-            int g = global::System.Math.Min(((face.Colour >> 4) & 0xF) + shade, 15);
-            int b = global::System.Math.Min((face.Colour & 0xF) + shade, 15);
-
-            byte vidc = VidcColour.Encode(r, g, b);
-            int colourWord = VidcColour.ReplicateQuad(vidc);
-
-            int bufIdx = _buffers.GetBufferIndex(objZ);
-            _buffers.AddTriangle(bufIdx, sx1, sy1, sx2, sy2, sx3, sy3, colourWord);
-
-            // Shadow: project vertices from ground level (landscape altitude)
-            if (blueprint.HasShadow)
-            {
-                // Reconstruct worldZ from screen-depth z: worldZ = objZ - LANDSCAPE_Z + zCamera
-                int objWorldZ = objZ - FixedPoint.LANDSCAPE_Z + _state.ZCamera;
-
-                int worldVX1 = worldObjX + rx1;
-                int worldVZ1 = worldObjZ + rz1;
-                int worldVX2 = worldObjX + rx2;
-                int worldVZ2 = worldObjZ + rz2;
-                int worldVX3 = worldObjX + rx3;
-                int worldVZ3 = worldObjZ + rz3;
-
-                int alt1 = _landscape.GetAltitude(worldVX1, worldVZ1);
-                int alt2 = _landscape.GetAltitude(worldVX2, worldVZ2);
-                int alt3 = _landscape.GetAltitude(worldVX3, worldVZ3);
-
-                int shRelY1 = alt1 - _state.YCamera;
-                int shRelY2 = alt2 - _state.YCamera;
-                int shRelY3 = alt3 - _state.YCamera;
-
-                if (Projection.Project(wx1, shRelY1, wz1, out int shx1, out int shy1) &&
-                    Projection.Project(wx2, shRelY2, wz2, out int shx2, out int shy2) &&
-                    Projection.Project(wx3, shRelY3, wz3, out int shx3, out int shy3))
-                {
-                    int shIdx = _buffers.GetShadowBufferIndex(objZ);
-                    _buffers.AddTriangle(shIdx, shx1, shy1, shx2, shy2, shx3, shy3, 0);
-                }
-            }
+            _particles.DropRock(x, y, z);
         }
-    }
-
-    private int DotMatrix(int x, int y, int z, int row)
-    {
-        // Matrix is stored row-major: row 0 = (xNoseV, xRoofV, xSideV), etc.
-        // Each row dot with the vertex gives the rotated component.
-        int mx, my, mz;
-        switch (row)
-        {
-            case 0: mx = _state.XNoseV; my = _state.XRoofV; mz = _state.XSideV; break;
-            case 1: mx = _state.YNoseV; my = _state.YRoofV; mz = _state.YSideV; break;
-            default: mx = _state.ZNoseV; my = _state.ZRoofV; mz = _state.ZSideV; break;
-        }
-        return (int)(((long)x * mx + (long)y * my + (long)z * mz) >> 31);
     }
 
     // ---- Landscape and buffer drawing (back to front) ----
