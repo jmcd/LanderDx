@@ -70,8 +70,8 @@ public class GameEngine
             DrawVisibleObjects();
             _buffers.AddTerminators();
             DrawLandscapeAndBuffers();
-            RenderScoreBar();
             CopyToScreen();
+            RenderScoreBar();
             _rasterizer.Clear(0);
             _buffers.Clear();
             _state.MainLoopCount++;

@@ -379,6 +379,47 @@ public class GameEngineIntegrationTests
 
 
     [Test]
+    public void CrashAnimation_KeepsScoreBarVisible()
+    {
+        // The original's crash loop calls PrintCurrentScore every iteration
+        // (Lander.arm:2661-2665), so the bullet count stays visible during the
+        // 30-frame explosion. The port drew the score bar before CopyToScreen,
+        // which clears the top 16 rows — erasing the HUD it had just drawn.
+        var random = new Relander.Core.Engine.RandomGenerator(34);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        // Force a crash: ship below terrain, off the launchpad
+        var state = engine.State;
+        int offX = 10 * FixedPoint.TILE_SIZE;
+        int offZ = 10 * FixedPoint.TILE_SIZE;
+        state.XPlayer = offX;
+        state.ZPlayer = offZ;
+        state.YPlayer = engine.Landscape.GetAltitude(offX, offZ) + FixedPoint.TILE_SIZE;
+        state.XVelocity = 0;
+        state.YVelocity = 0;
+        state.ZVelocity = 0;
+
+        engine.Update(new TestInput());  // triggers crash (the crash loop runs next frame)
+        Assert.That(state.CrashLoopCount, Is.EqualTo(30), "Crash sequence should be armed");
+
+        engine.Update(new TestInput());  // one crash-loop frame
+        Assert.That(state.CrashLoopCount, Is.EqualTo(29), "One crash frame should have elapsed");
+
+        // The score string ("500" at row 8) must be visible in the HUD rows
+        var fb = screen.GetFramebuffer();
+        int hudPixels = 0;
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 320; x++)
+                if (fb[y * 320 + x] != 0)
+                    hudPixels++;
+
+        Assert.That(hudPixels, Is.GreaterThan(15),
+            "Score bar text must remain visible during the crash animation");
+    }
+
+    [Test]
     public void NewGame_InvalidatesMinimapCache()
     {
         // The minimap is a downsampled copy of the object map. A fresh placement
