@@ -357,10 +357,13 @@ public class PlayerController
                 projectedVertices[v].shadowY = shadowY;
             }
 
-            // Crash test: vertex has penetrated below its ground shadow.
-            // Use strict > (not >=): a vertex at exactly shadow level is the normal
-            // landed-on-ground state and must not trigger a crash.
-            if (projectedVertices[v].y > projectedVertices[v].shadowY)
+            // Crash test: vertex has penetrated to its ground shadow or below
+            // (Lander.arm:5246-5259: CMP R14, R1 / MVNHS R14, #0 / STRHSB — the
+            // unsigned HS condition includes equality). The previous strict >
+            // missed the exact-graze frame; the "normal landed state" reasoning
+            // in the old comment is moot because a landed ship's undercarriage
+            // sits 2 * UNDERCARRIAGE_Y above the pad terrain, never at equality.
+            if (projectedVertices[v].y >= projectedVertices[v].shadowY)
                 _state.CrashedFlag = -1;
         }
 
