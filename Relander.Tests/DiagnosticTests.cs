@@ -331,13 +331,13 @@ public class DiagnosticTests
         engine.StartNewGame();
         engine.Update(input);
 
-        // Check the top rows of the play area (rows 0-3 = score bar area)
-        // Count colors in the fuel bar region
+        // Check rows 2-4 of the score bar HUD area
+        var fb = screen.GetFramebuffer();
         var colorCounts = new Dictionary<byte, int>();
-        for (int y = 0; y < 4; y++)
+        for (int y = 2; y <= 4; y++)
             for (int x = 0; x < 320; x++)
             {
-                byte c = screen.GetPlayPixel(x, y);
+                byte c = fb[y * 320 + x];
                 if (c != 0)
                 {
                     colorCounts.TryGetValue(c, out int cnt);

@@ -298,14 +298,15 @@ public class RenderingTests
         engine.StartNewGame();
         engine.Update(new TestInput());
 
-        // Check text row 8 for bullet score text, lives, and high score
+        // Check text row 8 of top HUD score bar for bullet score text, lives, and high score
         int textPixels = 0;
+        var fb = screen.GetFramebuffer();
         for (int x = 0; x < 320; x++)
         {
-            if (screen.GetPlayPixel(x, 8) != 0) textPixels++;
+            if (fb[8 * 320 + x] != 0) textPixels++;
         }
 
-        Assert.That(textPixels, Is.GreaterThan(10), "Score bar text header should render non-zero text pixels");
+        Assert.That(textPixels, Is.GreaterThan(10), "Score bar text header should render non-zero text pixels in top HUD area");
     }
 
     private class TestScreen : Relander.Core.Interfaces.IScreen

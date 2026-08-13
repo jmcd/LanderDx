@@ -124,11 +124,11 @@ public class GameEngine
         // 6. Draw landscape + buffer contents back-to-front
         DrawLandscapeAndBuffers();
 
-        // 7. Score bar
-        RenderScoreBar();
-
-        // 8. Output to screen
+        // 7. Output play area to screen buffer
         CopyToScreen();
+
+        // 8. Draw HUD score bar onto top 16 rows of screen buffer
+        RenderScoreBar();
 
         // 9. Clear for next frame
         _rasterizer.Clear(0);
@@ -428,16 +428,19 @@ public class GameEngine
 
     private void RenderScoreBar()
     {
-        // 1. Fuel level bar on rows 2-4
+        var screenBuf = _screen.GetFramebuffer();
+        int stride = _screen.Width;
+
+        // 1. Fuel level bar on rows 2-4 (pixel y = 2, 3, 4)
         int fuelPixels = _state.FuelLevel >> 4;
         if (fuelPixels > 320) fuelPixels = 320;
         byte fuelColor = VidcColour.Encode(12, 8, 0); // Orange fuel bar
-        int len = global::System.Math.Min(fuelPixels, 320);
+        int len = global::System.Math.Min(fuelPixels, stride);
         if (len > 0)
         {
-            _framebuffer.AsSpan(2 * 320, len).Fill(fuelColor);
-            _framebuffer.AsSpan(3 * 320, len).Fill(fuelColor);
-            _framebuffer.AsSpan(4 * 320, len).Fill(fuelColor);
+            screenBuf.Slice(2 * stride, len).Fill(fuelColor);
+            screenBuf.Slice(3 * stride, len).Fill(fuelColor);
+            screenBuf.Slice(4 * stride, len).Fill(fuelColor);
         }
 
         // 2. Text header on text row 1 (pixel y = 8)
@@ -447,30 +450,33 @@ public class GameEngine
 
         // Col 0: Bullet count / current score
         string scoreStr = _state.CurrentScore.ToString();
-        SystemFont.DrawString(_framebuffer, 320, 0, 8, scoreStr, white);
+        SystemFont.DrawString(screenBuf, stride, 0, 8, scoreStr, white);
 
         // Col 30 (x = 240): Remaining lives
         string livesStr = _state.RemainingLives.ToString();
-        SystemFont.DrawString(_framebuffer, 320, 240, 8, livesStr, yellow);
+        SystemFont.DrawString(screenBuf, stride, 240, 8, livesStr, yellow);
 
         // Col 35 (x = 280): High score
         string highStr = _state.HighScore.ToString();
-        SystemFont.DrawString(_framebuffer, 320, 280, 8, highStr, cyan);
+        SystemFont.DrawString(screenBuf, stride, 280, 8, highStr, cyan);
 
-        // 3. Game Over text message when lives <= 0
+        // 3. Game Over text message when lives <= 0 (middle of play area, y = 128)
         if (_state.RemainingLives <= 0)
         {
             byte red = VidcColour.Encode(15, 0, 0);
-            SystemFont.DrawString(_framebuffer, 320, 120, 112, "GAME OVER", red);
+            SystemFont.DrawString(screenBuf, stride, 120, 128, "GAME OVER", red);
         }
     }
-
-
 
     private void CopyToScreen()
     {
         var screenBuf = _screen.GetFramebuffer();
         int stride = _screen.Width;
+
+        // Clear top 16 rows (score bar HUD area, y = 0..15)
+        screenBuf.Slice(0, 16 * stride).Clear();
+
+        // Copy 240-row 3D play area to rows 16..255 of screen buffer
         for (int y = 0; y < 240; y++)
         {
             _framebuffer.AsSpan(y * 320, global::System.Math.Min(320, stride))

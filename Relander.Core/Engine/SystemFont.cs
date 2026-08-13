@@ -12,18 +12,19 @@ public static class SystemFont
     private static readonly byte[][] FontData = InitFontData();
 
     /// <summary>
-    /// Draw a single 8x8 character onto a 320x240 8-bit framebuffer.
+    /// Draw a single 8x8 character onto an 8-bit framebuffer.
     /// </summary>
-    public static void DrawChar(byte[] framebuffer, int stride, int x, int y, char ch, byte color)
+    public static void DrawChar(Span<byte> framebuffer, int stride, int x, int y, char ch, byte color)
     {
         int charIndex = ch - 32;
         if (charIndex < 0 || charIndex >= FontData.Length) return;
 
+        int maxHeight = framebuffer.Length / stride;
         byte[] glyph = FontData[charIndex];
         for (int r = 0; r < 8; r++)
         {
             int py = y + r;
-            if ((uint)py >= 240) continue;
+            if ((uint)py >= (uint)maxHeight) continue;
             int rowOffset = py * stride;
 
             byte rowBits = glyph[r];
@@ -32,7 +33,7 @@ public static class SystemFont
                 if ((rowBits & (1 << (7 - c))) != 0)
                 {
                     int px = x + c;
-                    if ((uint)px < 320)
+                    if ((uint)px < (uint)stride)
                     {
                         framebuffer[rowOffset + px] = color;
                     }
@@ -42,9 +43,9 @@ public static class SystemFont
     }
 
     /// <summary>
-    /// Draw a text string onto a 320x240 8-bit framebuffer.
+    /// Draw a text string onto an 8-bit framebuffer.
     /// </summary>
-    public static void DrawString(byte[] framebuffer, int stride, int x, int y, string text, byte color)
+    public static void DrawString(Span<byte> framebuffer, int stride, int x, int y, string text, byte color)
     {
         if (text == null) return;
         for (int i = 0; i < text.Length; i++)
