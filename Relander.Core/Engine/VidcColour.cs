@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Relander.Core.Engine;
 
 /// <summary>
@@ -21,7 +23,13 @@ public static class VidcColour
     /// </summary>
     public static byte Encode(int r, int g, int b)
     {
-        // Clamp to 4-bit range
+        // Guard against out-of-range inputs in debug builds.
+        // All callers should pre-clamp; the mask below is kept for release-build safety
+        // but silently wraps (e.g. 16 → 0), which can produce unexpected colours.
+        Debug.Assert((uint)r <= 15, $"VidcColour.Encode: r={r} out of 0-15 range");
+        Debug.Assert((uint)g <= 15, $"VidcColour.Encode: g={g} out of 0-15 range");
+        Debug.Assert((uint)b <= 15, $"VidcColour.Encode: b={b} out of 0-15 range");
+
         r &= 0xF;
         g &= 0xF;
         b &= 0xF;
