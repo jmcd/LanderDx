@@ -11,7 +11,10 @@ public class RandomGenerator : IRandomSource
     private uint _seed1;
     private uint _seed2;
 
-    public RandomGenerator(int seed1 = 0x12345678, int seed2 = unchecked((int)0x9ABCDEF0))
+    // The ROM's fixed seed pair (Lander.arm:7776-7795: EQUD &4F9C3490 /
+    // EQUD &DA0383CF) — the default must be the original's, or the whole
+    // random sequence (object map layout, spray colours, rock drops) differs.
+    public RandomGenerator(int seed1 = unchecked((int)0x4F9C3490), int seed2 = unchecked((int)0xDA0383CF))
     {
         _seed1 = (uint)seed1;
         _seed2 = (uint)seed2;

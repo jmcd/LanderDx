@@ -1,4 +1,5 @@
 using Relander.Core.Math;
+using Relander.Core.Engine;
 using Relander.Core.Data;
 
 namespace Relander.Tests;
@@ -120,5 +121,24 @@ public class DataIntegrityTests
                     $"Altitude at ({x},{z}) = 0x{alt:X8} should be <= SEA_LEVEL (0x{FixedPoint.SEA_LEVEL:X8})");
             }
         }
+    }
+
+    [Test]
+    public void RandomGenerator_DefaultSeeds_MatchRomConstants()
+    {
+        // The ROM's fixed seed pair is EQUD &4F9C3490 / EQUD &DA0383CF
+        // (Lander.arm:7776-7795). With the default constructor the first
+        // GetRandomNumbers output must be 0x64871C00 / 0xB407079E (verified by
+        // independent instruction-level simulation of the LFSR at
+        // Lander.arm:7830-7854). The previous defaults (0x12345678/0x9ABCDEF0)
+        // changed the entire game's random sequence: object map layout, spray
+        // colours, rock drops.
+        var rng = new RandomGenerator();
+        var (r0, r1) = rng.GetRandomNumbers();
+
+        Assert.That(r0, Is.EqualTo(unchecked((int)0x64871C00)),
+            "First R0 must match the ROM-seeded sequence");
+        Assert.That(r1, Is.EqualTo(unchecked((int)0xB407079E)),
+            "First R1 must match the ROM-seeded sequence");
     }
 }
