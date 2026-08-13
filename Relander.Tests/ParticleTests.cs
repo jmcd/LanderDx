@@ -687,6 +687,49 @@ public class ParticleTests
     }
 
     [Test]
+    public void ExplosionDebris_IsColouredBouncingSplashingParticle()
+    {
+        // AddDebrisParticleToBuffer (Lander.arm:3997-4247): random
+        // purple-brownish-green (red 4-11, green 2-9, blue 4-7), flags
+        // &001C0000 = splash|bounce|gravity, life 15 + rand >> 26, velocity
+        // jitter shift 10. The previous port used a fixed (8,4,2) colour with
+        // no splash bit and the wrong life/shift values.
+        var state = new GameState();
+        state.Initialize();
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        particles.AddBigExplosion(0, 0, 0);
+
+        int debrisChecked = 0;
+        for (int idx = 0; idx < particles.Count; idx++)
+        {
+            var p = particles.GetParticle(idx);
+            // Debris: splash|bounce|gravity but NO fade
+            if ((p.Flags & ParticleSystem.FLAG_SPLASH) == 0
+                || (p.Flags & ParticleSystem.FLAG_FADE) != 0)
+                continue;
+            debrisChecked++;
+            Assert.That(p.Flags & ParticleSystem.FLAG_BOUNCE, Is.Not.EqualTo(0));
+            Assert.That(p.Flags & ParticleSystem.FLAG_GRAVITY, Is.Not.EqualTo(0));
+            byte colour = (byte)(p.Flags & 0xFF);
+            // Blue 4-7 always has its bit 3 clear (VIDC bit 7). Red/green bit 3s
+            // vary with the random draw (r 4..11, g 2..9), so only pin blue.
+            Assert.That((colour >> 7) & 1, Is.EqualTo(0), "Blue 4-7 has bit 3 clear");
+            Assert.That(p.Life, Is.InRange(15, 15 + 63), "Life 15 + rand >> 26");
+            Assert.That(
+                global::System.Math.Abs((long)p.VX) <= 0x400000
+                && global::System.Math.Abs((long)p.VY) <= 0x400000
+                && global::System.Math.Abs((long)p.VZ) <= 0x400000,
+                Is.True, "Velocity jitter at shift 10 (+/-&400000)");
+        }
+        Assert.That(debrisChecked, Is.GreaterThan(0), "Should find debris particles");
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);

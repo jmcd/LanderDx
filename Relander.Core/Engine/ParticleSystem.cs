@@ -348,8 +348,7 @@ public class ParticleSystem
             AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
             AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
             // 1 debris particle
-            byte debrisColor = VidcColour.Encode(8, 4, 2);
-            AddMovingParticle(x, y, z, 0, 0, 0, 16, FLAG_GRAVITY | FLAG_BOUNCE | debrisColor, 8, 28);
+            AddDebrisParticle(x, y, z);
             // 1 smoke particle
             AddSmokeParticle(x, y, z);
         }
@@ -369,6 +368,24 @@ public class ParticleSystem
         byte smokeColor = VidcColour.Encode(grey, grey, grey);
         AddMovingParticle(x, y, z, 0, -(FixedPoint.SMOKE_RISING_SPEED + 1), 0,
             15, FLAG_BOUNCE | smokeColor, 13, 25);
+    }
+
+    /// <summary>
+    /// Add a purple-brownish-green debris particle that flies out and bounces
+    /// (Lander.arm:3997-4247, AddDebrisParticleToBuffer): red = (rand & 7) + 4,
+    /// green = (rand >> 29) + 2, blue = (rand >> 30) + 4, flags =
+    /// splash|bounce|gravity, life 15 + rand >> 26 (0..63), velocity jitter at
+    /// shift 10 (+/-&400000), starting stationary.
+    /// </summary>
+    private void AddDebrisParticle(int x, int y, int z)
+    {
+        var (rand0, rand1) = _random.GetRandomNumbers();
+        int r = (rand0 & 7) + 4;
+        int g = (int)(((uint)rand1 >> 29) + 2);
+        int b = (int)(((uint)rand0 >> 30) + 4);
+        byte debrisColor = VidcColour.Encode(r, g, b);
+        AddMovingParticle(x, y, z, 0, 0, 0, 15,
+            FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY | debrisColor, 10, 26);
     }
 
     /// <summary>
@@ -402,8 +419,7 @@ public class ParticleSystem
             AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
             AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
             // 1 debris particle
-            byte debrisColor = VidcColour.Encode(8, 4, 2);
-            AddMovingParticle(x, y, z, 0, 0, 0, 16, FLAG_GRAVITY | FLAG_BOUNCE | debrisColor, 7, 27);
+            AddDebrisParticle(x, y, z);
             // 1 smoke particle
             AddSmokeParticle(x, y, z);
         }
