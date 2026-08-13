@@ -320,10 +320,11 @@ public class DiagnosticTests
         engine.StartNewGame();
         engine.Update(input);
 
-        // Check rows 2-4 of the score bar HUD area
+        // The fuel bar now sits at the top of the play area: rows 17-19 in
+        // fuelBarColour &37373737 (Lander.arm:5884-5954, 5829-5831)
         var fb = screen.GetFramebuffer();
         var colorCounts = new Dictionary<byte, int>();
-        for (int y = 2; y <= 4; y++)
+        for (int y = 17; y <= 19; y++)
             for (int x = 0; x < 320; x++)
             {
                 byte c = fb[y * 320 + x];
@@ -334,20 +335,12 @@ public class DiagnosticTests
                 }
             }
 
-        TestContext.WriteLine($"Colors in score bar area: {string.Join(", ", colorCounts.Select(kv => $"0x{kv.Key:X2}={kv.Value}"))}");
+        TestContext.WriteLine($"Colors in fuel bar rows: {string.Join(", ", colorCounts.Select(kv => $"0x{kv.Key:X2}={kv.Value}"))}");
 
-        // VIDC 0x6D = encode(12,8,0) = orange. This might vary.
-        // Check that some non-zero pixels exist in the bar area
         int totalPixels = colorCounts.Values.Sum();
-        Assert.That(totalPixels, Is.GreaterThan(0), "Score bar area should have non-black pixels");
-
-        // Decode the dominant color to see what it is
-        if (colorCounts.Count > 0)
-        {
-            byte dominantColor = colorCounts.OrderByDescending(kv => kv.Value).First().Key;
-            var (r, g, b) = VidcColour.DecodeToRgb24(dominantColor);
-            TestContext.WriteLine($"Dominant bar color: VIDC 0x{dominantColor:X2} = R={r} G={g} B={b}");
-        }
+        Assert.That(totalPixels, Is.GreaterThan(0), "Fuel bar rows should have non-black pixels");
+        Assert.That(colorCounts.ContainsKey(0x37), Is.True,
+            "The bar must use the ROM's &37373737 colour byte");
     }
 
     [Test]

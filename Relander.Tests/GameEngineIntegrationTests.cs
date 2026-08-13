@@ -379,6 +379,34 @@ public class GameEngineIntegrationTests
 
 
     [Test]
+    public void FuelBar_IsAtTopOfPlayArea_InRomColour()
+    {
+        // The original's fuel bar sits at the top of the play area — screen
+        // rows 17-19 (Lander.arm:5884-5954: screenAddr + 320, +2*320, +3*320
+        // past the two text rows) — in fuelBarColour &37373737
+        // (Lander.arm:5829-5831). The previous orange bar sat at rows 2-4 in
+        // the HUD.
+        var random = new Relander.Core.Engine.RandomGenerator(35);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+        engine.Update(new TestInput());
+
+        var fb = screen.GetFramebuffer();
+        int fuelPixels = engine.State.FuelLevel >> 4;
+        int len = global::System.Math.Min(fuelPixels, 320);
+        Assert.That(len, Is.GreaterThan(50), "Precondition: a sizeable fuel bar");
+
+        Assert.That(fb[17 * 320], Is.EqualTo((byte)0x37), "Bar top row colour");
+        Assert.That(fb[18 * 320], Is.EqualTo((byte)0x37), "Bar middle row colour");
+        Assert.That(fb[19 * 320], Is.EqualTo((byte)0x37), "Bar bottom row colour");
+        Assert.That(fb[(len - 1) * 1 + 17 * 320], Is.EqualTo((byte)0x37),
+            "Bar extends to its full length");
+        Assert.That(fb[2 * 320], Is.Not.EqualTo((byte)0x37),
+            "No bar in the old HUD position (row 2)");
+    }
+
+    [Test]
     public void CrashAnimation_KeepsScoreBarVisible()
     {
         // The original's crash loop calls PrintCurrentScore every iteration

@@ -390,16 +390,20 @@ public class GameEngine
         var screenBuf = _screen.GetFramebuffer();
         int stride = _screen.Width;
 
-        // 1. Fuel level bar on rows 2-4 (pixel y = 2, 3, 4)
+        // 1. Fuel level bar at the top of the play area: screen rows 17-19
+        // (Lander.arm:5884-5954: screenAddr points 16 rows down past the two
+        // text rows, and the bar rows are drawn at +320, +2*320, +3*320), in
+        // the fuelBarColour &37373737 (EQUD at Lander.arm:5829-5831). The
+        // previous orange bar at rows 2-4 sat inside the HUD instead.
         int fuelPixels = _state.FuelLevel >> 4;
         if (fuelPixels > 320) fuelPixels = 320;
-        byte fuelColor = VidcColour.Encode(12, 8, 0); // Orange fuel bar
+        byte fuelColor = 0x37;
         int len = global::System.Math.Min(fuelPixels, stride);
         if (len > 0)
         {
-            screenBuf.Slice(2 * stride, len).Fill(fuelColor);
-            screenBuf.Slice(3 * stride, len).Fill(fuelColor);
-            screenBuf.Slice(4 * stride, len).Fill(fuelColor);
+            screenBuf.Slice(17 * stride, len).Fill(fuelColor);
+            screenBuf.Slice(18 * stride, len).Fill(fuelColor);
+            screenBuf.Slice(19 * stride, len).Fill(fuelColor);
         }
 
         // 2. Text header on text row 1 (pixel y = 8)
