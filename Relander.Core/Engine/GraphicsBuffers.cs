@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Relander.Core.Math;
 
 namespace Relander.Core.Engine;
@@ -71,7 +72,12 @@ public class GraphicsBuffers
     {
         if (bufferIndex < 0 || bufferIndex >= BufferCount) return;
         int end = _endIndices[bufferIndex];
-        if (end + 8 > _bufferCapacity) return;  // Buffer overflow protection
+        // The original scribbles past the buffer end when full (the buffers are
+        // contiguous, so it corrupts the next one); the port drops the command
+        // instead. Make the overflow loud in debug builds.
+        Debug.Assert(end + 8 <= _bufferCapacity,
+            $"Graphics buffer {bufferIndex} overflowed — triangle command dropped");
+        if (end + 8 > _bufferCapacity) return;
 
         var buf = _buffers[bufferIndex];
         buf[end] = COMMAND_TRIANGLE;
@@ -92,6 +98,8 @@ public class GraphicsBuffers
     {
         if (bufferIndex < 0 || bufferIndex >= BufferCount) return;
         int end = _endIndices[bufferIndex];
+        Debug.Assert(end + 2 <= _bufferCapacity,
+            $"Graphics buffer {bufferIndex} overflowed — particle command dropped");
         if (end + 2 > _bufferCapacity) return;
 
         var buf = _buffers[bufferIndex];
