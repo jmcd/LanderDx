@@ -54,6 +54,11 @@ public static class Program
         {
             input.PollEvents();
             accumulator += Raylib.GetFrameTime();
+            // After a long display stall (window drag/freeze) the accumulator
+            // would otherwise catch up in a burst of game ticks; clamp to one
+            // frame so a stall drops time instead of fast-forwarding the game.
+            if (accumulator > GAME_FRAME_SECONDS)
+                accumulator = GAME_FRAME_SECONDS;
 
             // Step game logic once per accumulated game frame
             bool textureStale = false;
