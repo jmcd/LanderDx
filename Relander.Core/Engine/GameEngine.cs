@@ -63,8 +63,11 @@ public class GameEngine
     {
         if (input.EscapePressed) return false;
 
-        // Crash animation loop (30 frames of explosion after player crash)
-        if (_state.CrashLoopCount > 0)
+        // Crash animation loop: 31 frames of explosion after player crash
+        // (the original's SUBS/BPL loop with R8 = 30 runs the body for 30..0).
+        // PlayingGame == 0 is the crash state (TriggerCrash sets it; the count
+        // is the loop's R8 counter), as in the original.
+        if (_state.PlayingGame == 0)
         {
             _particles.UpdateAndDraw();
             DrawVisibleObjects();
@@ -77,7 +80,11 @@ public class GameEngine
             _state.MainLoopCount++;
             _state.CrashLoopCount--;
 
-            if (_state.CrashLoopCount == 0)
+            // The original's crash loop runs 31 iterations: SUBS R8, R8, #1 /
+            // BPL with R8 = 30 (Lander.arm:2671-2676) executes the body for
+            // R8 = 30 down to 0, and only then falls through to LoseLife. The
+            // previous == 0 check cut the animation one frame short.
+            if (_state.CrashLoopCount < 0)
             {
                 _state.RemainingLives--;
                 if (_state.RemainingLives <= 0)

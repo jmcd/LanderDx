@@ -979,13 +979,14 @@ public class ParticleTests
         Assert.That(engine.State.CrashLoopCount, Is.EqualTo(30), "Should set 30-frame crash loop count");
         Assert.That(engine.State.RemainingLives, Is.EqualTo(initialLives), "Should not decrement life until crash loop finishes");
 
-        // Advance 30 frames of crash animation
-        for (int i = 0; i < 30; i++)
+        // The original's crash loop runs 31 iterations (SUBS/BPL with R8 = 30
+        // executes the body for 30 down to 0, Lander.arm:2671-2676)
+        for (int i = 0; i < 31; i++)
         {
             engine.Update(new TestInput());
         }
 
-        Assert.That(engine.State.CrashLoopCount, Is.EqualTo(0), "Crash loop should be finished");
+        Assert.That(engine.State.CrashLoopCount, Is.EqualTo(-1), "Crash loop should be finished");
         Assert.That(engine.State.RemainingLives, Is.EqualTo(initialLives - 1), "Remaining lives should decrement after crash loop");
     }
 }
