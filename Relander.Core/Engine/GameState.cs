@@ -87,6 +87,7 @@ public class GameState
     public void PlaceOnLaunchpad()
     {
         PlayingGame = -1;
+        CrashedFlag = 0;   // Clear any stale crash from the previous life's DrawShip
         XCamera = 0;
         ZCamera = 0;
         ShipDirection = 0;

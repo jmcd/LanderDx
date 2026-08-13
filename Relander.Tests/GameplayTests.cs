@@ -58,16 +58,18 @@ public class GameplayTests
         var state = engine.State;
         state.XPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
         state.ZPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
-        // Place exactly at pad level to satisfy y >= LAUNCHPAD_Y
         state.YPlayer = FixedPoint.LAUNCHPAD_Y;
         state.XVelocity = 0;
-        state.YVelocity = FixedPoint.LANDING_SPEED - 1;   // one unit below threshold
+        // The collision check runs AFTER UpdatePhysics, which adds BASE_GRAVITY to vy.
+        // For the post-physics speed to be just under LANDING_SPEED, the pre-physics
+        // vy must be LANDING_SPEED - BASE_GRAVITY - 1.
+        state.YVelocity = FixedPoint.LANDING_SPEED - FixedPoint.BASE_GRAVITY - 1;
         state.ZVelocity = 0;
 
         int livesBefore = state.RemainingLives;
         bool alive = engine.Update(new TestInput());
 
-        Assert.That(alive, Is.True, "Speed = LANDING_SPEED - 1 should be safe");
+        Assert.That(alive, Is.True, "Speed just under threshold (after gravity) should be safe");
         Assert.That(state.RemainingLives, Is.EqualTo(livesBefore));
         Assert.That(state.CrashLoopCount, Is.EqualTo(0));
     }

@@ -200,40 +200,57 @@ public class PlayerController
         _state.YCamera = camY;
         _state.ZCamera = z + FixedPoint.CAMERA_PLAYER_Z;
 
-        // Check altitude below ship
-        int shipX = x;
-        int shipZ = z;
-        int terrainAlt = _landscape.GetAltitude(shipX, shipZ);
-        int safeAlt = terrainAlt - FixedPoint.UNDERCARRIAGE_Y;
-
-        // If safely above objects, no further checks needed
-        if (safeAlt - y < FixedPoint.SAFE_HEIGHT)
+        // --- Check 1: vertex/shadow crash flag set by DrawShip last frame ---
+        // The original ARM uses per-vertex screen-space comparison: when any ship
+        // vertex's screen Y >= its ground-shadow screen Y, the vertex is at or below
+        // ground. This is the primary collision mechanism.
+        if (_state.CrashedFlag != 0)
         {
-            // Check for landing on launchpad
-            if ((uint)x < FixedPoint.LAUNCHPAD_SIZE &&
-                (uint)z < FixedPoint.LAUNCHPAD_SIZE)
+            _state.CrashedFlag = 0;
+            return false;
+        }
+
+        // --- Check 2: world-space terrain height under the ship ---
+        // Always sample terrain — no SAFE_HEIGHT early-out, because at high speed the
+        // ship can travel more than SAFE_HEIGHT per frame and skip the check entirely.
+        int terrainAlt = _landscape.GetAltitude(x, z);
+
+        // Altitude at which the undercarriage touches the ground
+        // (terrainAlt is Y coord of ground surface; UNDERCARRIAGE_Y is the ship half-height)
+        int groundContact = terrainAlt - FixedPoint.UNDERCARRIAGE_Y;
+
+        // --- Launchpad zone ---
+        if ((uint)x < FixedPoint.LAUNCHPAD_SIZE && (uint)z < FixedPoint.LAUNCHPAD_SIZE)
+        {
+            int totalSpeed = global::System.Math.Abs(vx) + global::System.Math.Abs(vy) + global::System.Math.Abs(vz);
+            bool slowEnough = (uint)totalSpeed < FixedPoint.LANDING_SPEED;
+            bool atPadSurface = y >= FixedPoint.LAUNCHPAD_Y;
+
+            if (atPadSurface)
             {
-                // Over the launchpad — check landing speed
-                int totalSpeed = global::System.Math.Abs(vx) + global::System.Math.Abs(vy) + global::System.Math.Abs(vz);
-                if ((uint)totalSpeed < FixedPoint.LANDING_SPEED && y >= FixedPoint.LAUNCHPAD_Y)
+                if (slowEnough)
                 {
-                    // Safe landing!
+                    // Safe landing — snap to pad and refuel
                     _state.YPlayer = FixedPoint.LAUNCHPAD_Y;
                     _state.XVelocity = 0;
                     _state.YVelocity = 0;
                     _state.ZVelocity = 0;
-
-                    // Refuel
                     _state.FuelLevel = global::System.Math.Min(FixedPoint.MAX_FUEL_LEVEL,
                         _state.FuelLevel + FixedPoint.FUEL_REFUEL_RATE);
                     return true;
                 }
+                else
+                {
+                    // Hit the pad too fast — crash
+                    return false;
+                }
             }
-            else if (y >= safeAlt)
-            {
-                // Collision with ground! Lose a life
+        }
+        else
+        {
+            // Off the launchpad: crash if undercarriage has reached or passed terrain
+            if (y >= groundContact)
                 return false;
-            }
         }
 
         return true;
@@ -312,8 +329,10 @@ public class PlayerController
                 projectedVertices[v].shadowY = shadowY;
             }
 
-            // Crash test: object vertex below its shadow
-            if (projectedVertices[v].y >= projectedVertices[v].shadowY)
+            // Crash test: vertex has penetrated below its ground shadow.
+            // Use strict > (not >=): a vertex at exactly shadow level is the normal
+            // landed-on-ground state and must not trigger a crash.
+            if (projectedVertices[v].y > projectedVertices[v].shadowY)
                 _state.CrashedFlag = -1;
         }
 
