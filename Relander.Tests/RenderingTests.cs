@@ -1,4 +1,6 @@
+using Relander.Core.Data;
 using Relander.Core.Engine;
+using Relander.Core.Math;
 
 namespace Relander.Tests;
 
@@ -391,8 +393,72 @@ public class RenderingTests
         engine.Update(new TestInput { ToggleMap = true });
         Assert.That(engine.State.MapMode, Is.EqualTo(0), "Pressing ToggleMap should wrap back to Mode 0");
     }
+
+
+
+
+
+
+    [Test]
+    public void RotatingObject_Culling_HandlesLargeCoordinates()
+    {
+        // Back-face culling must use the exact 64-bit dot product sign: with
+        // camera-relative coordinates around 1e9 and normals around 1.8e8 the
+        // products are ~1e17, far past int32 (Lander.arm:5024-5081 pre-scales
+        // coordinates for the same reason). The previous int arithmetic wrapped
+        // the sign and culled faces at random.
+        //
+        // Chosen so the wrap provably flips the sign: objX * nx =
+        // 0x3B9ACA00 * -0x50000000 = -0x12A05F2000000000, whose low 32 bits are
+        // zero — the exact dot is negative (face must be drawn) but the int32
+        // wrap gives 0 (face culled).
+        var state = new GameState();
+        state.Initialize();
+        state.XCamera = 0;
+        state.YCamera = 0;
+        state.ZCamera = 0;
+
+        // Identity rotation matrix (shipPitch = shipDirection = 0)
+        state.XNoseV = 0x7FFFFFFF; state.XRoofV = 0; state.XSideV = 0;
+        state.YNoseV = 0; state.YRoofV = 0x7FFFFFFF; state.YSideV = 0;
+        state.ZNoseV = 0; state.ZRoofV = 0; state.ZSideV = 0x7FFFFFFF;
+
+        var landscape = new LandscapeGenerator(state);
+        var buffers = new GraphicsBuffers();
+
+        var blueprint = new ObjectBlueprint(
+            "OverflowProbe",
+            vertexCount: 3,
+            faceCount: 1,
+            flags: 0b00000001,  // rotates
+            vertices:
+            [
+                new Vector3Int(0, 0, 0),
+                new Vector3Int(FixedPoint.TILE_SIZE / 4, 0, 0),
+                new Vector3Int(0, FixedPoint.TILE_SIZE / 4, 0),
+            ],
+            faces:
+            [
+                new Face(new Vector3Int(-0x50000000, 0, 0), 0, 1, 2, 0x444),
+            ]);
+
+        int objX = 0x3B9ACA00;  // ~1e9: product with the normal overflows int32
+        int objY = 0;
+        int objZ = FixedPoint.LANDSCAPE_Z_MID;
+
+        ObjectRenderer.DrawObject(blueprint, objX, objY, objZ, 0, 0, state, buffers, landscape);
+        buffers.AddTerminators();
+
+        int triangles = 0;
+        for (int b = 0; b < buffers.BufferCount; b++)
+        {
+            var data = buffers.GetBufferData(b);
+            for (int i = 0; i < data.Length; i++)
+                if (data[i] == GraphicsBuffers.COMMAND_TRIANGLE) triangles++;
+        }
+
+        Assert.That(triangles, Is.EqualTo(1),
+            "Face with a negative exact dot product must be drawn despite int32 wrap");
+    }
+
 }
-
-
-
-

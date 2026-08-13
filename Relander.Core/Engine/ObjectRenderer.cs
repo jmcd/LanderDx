@@ -24,8 +24,12 @@ public static class ObjectRenderer
                 ny = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 1, state);
                 nz = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 2, state);
 
-                // Back-face culling for rotating objects
-                int dot = objX * nx + objY * ny + objZ * nz;
+                // Back-face culling for rotating objects. The products exceed
+                // int32 (objX and normals reach ~1e9), so compute the exact sign
+                // in 64-bit — the original pre-scales coordinates to keep the
+                // products inside 32 bits (Lander.arm:5024-5081). The previous
+                // int arithmetic wrapped and culled faces at random.
+                long dot = (long)objX * nx + (long)objY * ny + (long)objZ * nz;
                 if (dot >= 0) continue;
             }
             else
