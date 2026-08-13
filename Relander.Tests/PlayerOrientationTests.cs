@@ -110,6 +110,57 @@ public class PlayerOrientationTests
     }
 
     [Test]
+    public void ShipShading_ChangesWithPitch()
+    {
+        // Shading must use the rotated normal (Lander.arm:5504-5508): the ship's
+        // face brightness changes as it pitches. The previous code shaded from
+        // the local normal, so the drawn colour set was constant at every pitch.
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        // Move off the pad so the landing logic does not interfere
+        state.XPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE;
+        state.ZPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE;
+        state.YPlayer = FixedPoint.LAUNCHPAD_Y - 2 * FixedPoint.TILE_SIZE;
+        state.XVelocity = 0;
+        state.YVelocity = 0;
+        state.ZVelocity = 0;
+
+        var gen = new LandscapeGenerator(state);
+        var buffers = new GraphicsBuffers();
+        var objectMap = new ObjectMap(gen, new RandomGenerator(42));
+        var player = new PlayerController(state, buffers, gen, objectMap);
+
+        System.Collections.Generic.HashSet<int> ColoursAtPitch(int pitch)
+        {
+            state.ShipPitch = pitch;
+            state.ShipDirection = 0;
+            player.Update(new TestInput());
+            buffers.AddTerminators();
+            var set = new System.Collections.Generic.HashSet<int>();
+            for (int b = 0; b < buffers.BufferCount; b++)
+            {
+                var data = buffers.GetBufferData(b);
+                for (int i = 0; i < data.Length; i += 8)
+                {
+                    if (data[i] != GraphicsBuffers.COMMAND_TRIANGLE) break;
+                    set.Add(data[i + 7] & 0xFF);
+                }
+            }
+            buffers.Clear();
+            return set;
+        }
+
+        var levelColours = ColoursAtPitch(0);
+        var pitchedColours = ColoursAtPitch(0x20000000);  // 45 degrees
+
+        TestContext.WriteLine($"Level: [{string.Join(",", levelColours)}]");
+        TestContext.WriteLine($"Pitched: [{string.Join(",", pitchedColours)}]");
+        Assert.That(pitchedColours, Is.Not.EqualTo(levelColours),
+            "Shading must change when the ship pitches (rotated normal, not local)");
+    }
+
+    [Test]
     public void Thrust_ChangesShipPosition()
     {
         var state = new GameState();

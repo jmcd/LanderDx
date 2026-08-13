@@ -355,13 +355,16 @@ public class PlayerController
         // Draw faces
         foreach (var face in blueprint.Faces)
         {
-            // Back-face culling for rotating objects: rotate normal to world space
+            // Rotated normal in world space — used for both culling and shading
+            int rnx = face.Normal.X, rny = face.Normal.Y, rnz = face.Normal.Z;
             if (isRotating)
             {
                 int nx = face.Normal.X, ny = face.Normal.Y, nz = face.Normal.Z;
-                int rnx = DotProduct(nx, ny, nz, _state.XNoseV, _state.XRoofV, _state.XSideV);
-                int rny = DotProduct(nx, ny, nz, _state.YNoseV, _state.YRoofV, _state.YSideV);
-                int rnz = DotProduct(nx, ny, nz, _state.ZNoseV, _state.ZRoofV, _state.ZSideV);
+                rnx = DotProduct(nx, ny, nz, _state.XNoseV, _state.XRoofV, _state.XSideV);
+                rny = DotProduct(nx, ny, nz, _state.YNoseV, _state.YRoofV, _state.YSideV);
+                rnz = DotProduct(nx, ny, nz, _state.ZNoseV, _state.ZRoofV, _state.ZSideV);
+
+                // Back-face culling for rotating objects
                 long dot = (long)objX * rnx + (long)objY * rny + (long)objZ * rnz;
                 if (dot >= 0) continue;  // Face points away from camera
             }
@@ -371,9 +374,12 @@ public class PlayerController
             var pv2 = projectedVertices[face.V2];
             var pv3 = projectedVertices[face.V3];
 
-            // Compute shading from face normal (always computed, light above-left)
-            int brightness = (int)((0x80000000u - (uint)face.Normal.Y) >> 28);
-            if (face.Normal.X < 0) brightness++;
+            // Shading uses the ROTATED normal (Lander.arm:5504-5508: yVertex and
+            // xVertex hold the normal after MultiplyVectorByMatrix), so the ship's
+            // brightness changes as it pitches and yaws. The previous code shaded
+            // from the local normal, making the ship look flat.
+            int brightness = (int)((0x80000000u - (uint)rny) >> 28);
+            if (rnx < 0) brightness++;
             brightness = global::System.Math.Max(0, brightness - 5);
 
             // Apply brightness to colour channels
