@@ -104,7 +104,7 @@ public static class MinimapRenderer
     private static void RenderInsetMap(Span<byte> screenBuf, int stride, GameState state)
     {
         int startX = 252;
-        int startY = 16;
+        int startY = 22; // 6-pixel gap below top HUD score bar text (top border at y=21)
         int size = 64;
 
         byte borderCol = VidcColour.Encode(15, 15, 15);

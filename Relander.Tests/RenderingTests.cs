@@ -337,12 +337,12 @@ public class RenderingTests
         byte[] fb = new byte[320 * 256];
         MinimapRenderer.Render(fb, 320, state, landscape, objMap, particles);
 
-        byte borderPixel = fb[15 * 320 + 251]; // Top-left corner of border frame (x=251, y=15)
+        byte borderPixel = fb[21 * 320 + 251]; // Top-left corner of border frame (x=251, y=21)
         Assert.That(borderPixel, Is.EqualTo(VidcColour.Encode(15, 15, 15)),
             "Minimap border pixel should be rendered in top-right corner");
 
-        // Verify center map pixel inside inset at x=280, y=48
-        byte mapPixel = fb[48 * 320 + 280];
+        // Verify center map pixel inside inset at x=280, y=54
+        byte mapPixel = fb[54 * 320 + 280];
         Assert.That(mapPixel, Is.Not.EqualTo(0),
             "Minimap interior pixel should contain downsampled terrain color");
     }
