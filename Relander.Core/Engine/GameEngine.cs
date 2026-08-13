@@ -101,6 +101,9 @@ public class GameEngine
             return true;
         }
 
+        if (_state.CurrentScore > _state.HighScore)
+            _state.HighScore = _state.CurrentScore;
+
         _state.UpdateGravity();
 
         // 2. Exhaust particles if engines firing (bit 1 = hover, bit 2 = full thrust).

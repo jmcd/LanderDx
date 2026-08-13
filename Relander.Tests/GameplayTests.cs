@@ -470,4 +470,21 @@ public class GameplayTests
         // At frame 75, rock should still be falling through the sky
         Assert.That(particles.Count, Is.GreaterThan(0), "Rock particle should remain active while falling");
     }
+
+    [Test]
+    public void HighScore_UpdatesWhenCurrentScoreExceedsHighScore()
+    {
+        var random = new RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+
+        engine.StartNewGame();
+        engine.State.CurrentScore = 750;
+        engine.State.HighScore = 500;
+
+        engine.Update(new TestInput());
+
+        Assert.That(engine.State.HighScore, Is.EqualTo(750),
+            "HighScore should update to match CurrentScore when CurrentScore > HighScore");
+    }
 }
