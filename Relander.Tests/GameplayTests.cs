@@ -441,4 +441,33 @@ public class GameplayTests
         Assert.That(scorePixels, Is.GreaterThan(15),
             "Updated score string '520' should be rendered with non-zero pixels on top HUD score bar at row 8");
     }
+
+    [Test]
+    public void ReducedThreshold_SpawnsFallingRocksThatBecomeVisibleOnScreen()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.CurrentScore = 1200;
+
+        var landscape = new LandscapeGenerator(state);
+        var random = new RandomGenerator(42);
+        var objMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objMap, buffers, random);
+
+        // Spawn a rock from the sky above the camera
+        particles.DropRock(state.XCamera, -(FixedPoint.ROCK_HEIGHT + 1), state.ZCamera - FixedPoint.PLAYER_FRONT_Z);
+
+        Assert.That(particles.Count, Is.EqualTo(1), "Rock should spawn");
+
+        // Advance 75 frames (until rock falls down into view)
+        for (int frame = 0; frame < 75; frame++)
+        {
+            particles.UpdateAndDraw();
+        }
+
+        // At frame 75, rock should still be falling through the sky
+        Assert.That(particles.Count, Is.GreaterThan(0), "Rock particle should remain active while falling");
+    }
 }

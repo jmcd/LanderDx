@@ -17,11 +17,22 @@ public static class ObjectRenderer
 
         foreach (var face in blueprint.Faces)
         {
-            // Back-face culling for rotating objects
+            int nx, ny, nz;
             if (rotates)
             {
-                int dot = objX * face.Normal.X + objY * face.Normal.Y + objZ * face.Normal.Z;
+                nx = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 0, state);
+                ny = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 1, state);
+                nz = DotMatrix(face.Normal.X, face.Normal.Y, face.Normal.Z, 2, state);
+
+                // Back-face culling for rotating objects
+                int dot = objX * nx + objY * ny + objZ * nz;
                 if (dot >= 0) continue;
+            }
+            else
+            {
+                nx = face.Normal.X;
+                ny = face.Normal.Y;
+                nz = face.Normal.Z;
             }
 
             var v1 = blueprint.Vertices[face.V1];
@@ -58,8 +69,8 @@ public static class ObjectRenderer
             if (!Projection.Project(wx2, wy2, wz2, out int sx2, out int sy2)) continue;
             if (!Projection.Project(wx3, wy3, wz3, out int sx3, out int sy3)) continue;
 
-            int shade = (int)((0x80000000u - (uint)face.Normal.Y) >> 28);
-            if (face.Normal.X < 0) shade++;
+            int shade = (int)((0x80000000u - (uint)ny) >> 28);
+            if (nx < 0) shade++;
             shade = global::System.Math.Max(0, shade - 5);
             if (shade > 3) shade = 3;
             int r = global::System.Math.Min(((face.Colour >> 8) & 0xF) + shade, 15);
