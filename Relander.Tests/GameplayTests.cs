@@ -683,8 +683,11 @@ public class GameplayTests
     }
 
     [Test]
-    public void HighScore_UpdatesWhenCurrentScoreExceedsHighScore()
+    public void HighScore_UpdatesAtStartOfNewGame()
     {
+        // The original compares and stores the high score in StartNewGame
+        // (Lander.arm:12218-12230), not per-frame: a new high score only
+        // appears once the next game begins, and the score is then reset.
         var random = new RandomGenerator(42);
         var screen = new TestScreen();
         var engine = new GameEngine(random, screen);
@@ -693,9 +696,16 @@ public class GameplayTests
         engine.State.CurrentScore = 750;
         engine.State.HighScore = 500;
 
+        // Per-frame updates must NOT touch the high score
         engine.Update(new TestInput());
+        Assert.That(engine.State.HighScore, Is.EqualTo(500),
+            "High score must not change mid-game");
 
+        // A new game latches max(highScore, currentScore) and resets the score
+        engine.StartNewGame();
         Assert.That(engine.State.HighScore, Is.EqualTo(750),
-            "HighScore should update to match CurrentScore when CurrentScore > HighScore");
+            "New high score is recorded when the next game starts");
+        Assert.That(engine.State.CurrentScore, Is.EqualTo(FixedPoint.INITIAL_SCORE),
+            "Score is reset for the new game");
     }
 }

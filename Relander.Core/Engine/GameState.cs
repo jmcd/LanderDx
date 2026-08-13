@@ -61,7 +61,9 @@ public class GameState
     public int FuelLevel;
     public int Gravity;
     public int RemainingLives;
-    public int HighScore;
+    // Set once at entry (Lander.arm:11977-11979, 12201-12203); StartNewGame
+    // latches max(highScore, currentScore) — Initialize must not reset it.
+    public int HighScore = FixedPoint.INITIAL_HIGH_SCORE;
     public int MapMode; // 0 = Inset Mini-Map, 1 = Full 256x256 Overlay, 2 = Hidden
 
     // ---- Camera ----
@@ -80,7 +82,6 @@ public class GameState
         FuelLevel = FixedPoint.INITIAL_FUEL_LEVEL;
         Gravity = FixedPoint.BASE_GRAVITY;
         RemainingLives = FixedPoint.INITIAL_LIVES;
-        HighScore = FixedPoint.INITIAL_HIGH_SCORE;  // 500 — the original initialises highScore to 500 at Entry (Lander.arm:11977-11979)
         PlayingGame = -1; // playing
         MainLoopCount = 0;
     }

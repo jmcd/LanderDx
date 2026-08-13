@@ -52,6 +52,12 @@ public class GameEngine
 
     public void StartNewGame()
     {
+        // High score: max(highScore, currentScore) at game start — the original
+        // compares and stores here (Lander.arm:12218-12230), not per-frame, so
+        // a new high score only appears once the next game begins
+        if (_state.CurrentScore >= _state.HighScore)
+            _state.HighScore = _state.CurrentScore;
+
         _state.Initialize();
         _objectMap.PlaceObjects();
         _state.PlaceOnLaunchpad();
@@ -111,9 +117,6 @@ public class GameEngine
             TriggerCrash();
             return true;
         }
-
-        if (_state.CurrentScore > _state.HighScore)
-            _state.HighScore = _state.CurrentScore;
 
         _state.UpdateGravity();
 
