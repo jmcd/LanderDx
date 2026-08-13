@@ -346,7 +346,9 @@ public class ParticleSystem
     /// <summary>Spawn a bullet particle when the fire button is pressed (Lander.arm:2377-2465).</summary>
     public bool SpawnBullet(int x, int y, int z, int vx, int vy, int vz, int xNoseV, int yNoseV, int zNoseV)
     {
-        if (_state.CurrentScore <= 0) return false;
+        // The original decrements unconditionally (Lander.arm:2384-2386:
+        // SUB R?, R?, #1): the bullet fires at score 0 and the score goes
+        // negative. The previous score <= 0 guard blocked firing entirely.
         _state.CurrentScore--;
 
         int pVx = vx + (xNoseV >> 8);

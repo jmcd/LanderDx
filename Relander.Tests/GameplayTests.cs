@@ -431,8 +431,11 @@ public class GameplayTests
     }
 
     [Test]
-    public void FiringBullet_AtZeroScore_DoesNotFireAndKeepsScoreAtZero()
+    public void FiringBullet_AtZeroScore_FiresAndScoreGoesNegative()
     {
+        // The original decrements the score unconditionally when firing
+        // (Lander.arm:2384-2386): the bullet fires at score 0 and the score goes
+        // negative. The previous port blocked firing at score <= 0.
         var random = new RandomGenerator(7);
         var state = new GameState();
         state.Initialize();
@@ -447,9 +450,9 @@ public class GameplayTests
         bool fired = particles.SpawnBullet(state.XPlayer, state.YPlayer, state.ZPlayer,
             0, 0, 0, state.XNoseV, state.YNoseV, state.ZNoseV);
 
-        Assert.That(fired, Is.False, "Should not fire with 0 score");
-        Assert.That(state.CurrentScore, Is.EqualTo(0), "Score should remain 0");
-        Assert.That(particles.Count, Is.EqualTo(0), "No bullet particle should be spawned");
+        Assert.That(fired, Is.True, "The bullet must fire at zero score");
+        Assert.That(state.CurrentScore, Is.EqualTo(-1), "Score goes negative");
+        Assert.That(particles.Count, Is.EqualTo(1), "The bullet particle is spawned");
     }
 
     // ---- Exhaust only fires on thrust/hover, not on fire key ----
