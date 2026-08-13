@@ -212,7 +212,10 @@ public class PlayerController
         _state.YVelocity = vy;
         _state.ZVelocity = vz;
 
-        // Fuel consumption (bit 0 of burn rate ignored for fuel)
+        // Fuel consumption: the original subtracts the FULL burn rate including
+        // bit 0 (fire) — Lander.arm:5892-5897: SUBS R1, R1, R2 — so firing a
+        // bullet costs one fuel unit. The previous comment (and the README)
+        // wrongly claimed bit 0 is ignored.
         _state.FuelLevel = global::System.Math.Max(0, _state.FuelLevel - burnRate);
     }
 
