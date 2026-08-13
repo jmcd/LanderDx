@@ -43,12 +43,25 @@ public class PlayerController
         UpdatePhysics();
 
         // --- Check for landing / collision ---
-        bool alive = CheckCollisionAndLanding();
+        if (!CheckCollisionAndLanding())
+            return false;  // World-space collision — the original jumps straight to LoseLife without drawing the ship
 
         // --- Draw the ship ---
         DrawShip();
 
-        return alive;
+        // --- Vertex/shadow crash flag: the original checks it immediately after
+        // drawing the ship (Lander.arm:2214-2217: BL DrawObject / LDRB R10,
+        // [R11, #crashedFlag] / CMP R10, #0 / BLNE LoseLife), so the crash
+        // registers in the same frame. The previous code read the flag left by
+        // the PREVIOUS frame's draw, giving the ship an extra physics step past
+        // the penetration point.
+        if (_state.CrashedFlag != 0)
+        {
+            _state.CrashedFlag = 0;
+            return false;
+        }
+
+        return true;
     }
 
     private void ReadKeyboardInput(IGameInput input)
@@ -221,17 +234,7 @@ public class PlayerController
         _state.YCamera = camY;
         _state.ZCamera = z + FixedPoint.CAMERA_PLAYER_Z;
 
-        // --- Check 1: vertex/shadow crash flag set by DrawShip last frame ---
-        // The original ARM uses per-vertex screen-space comparison: when any ship
-        // vertex's screen Y >= its ground-shadow screen Y, the vertex is at or below
-        // ground. This is the primary collision mechanism.
-        if (_state.CrashedFlag != 0)
-        {
-            _state.CrashedFlag = 0;
-            return false;
-        }
-
-        // --- Check 2: world-space terrain height under the ship ---
+        // --- World-space terrain height under the ship ---
         // Always sample terrain — no SAFE_HEIGHT early-out, because at high speed the
         // ship can travel more than SAFE_HEIGHT per frame and skip the check entirely.
         int terrainAlt = _landscape.GetAltitude(x, z);

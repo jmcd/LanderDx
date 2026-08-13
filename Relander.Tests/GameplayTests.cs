@@ -167,6 +167,35 @@ public class GameplayTests
     }
 
     [Test]
+    public void VertexPenetration_CrashesInSameFrame()
+    {
+        // The original checks the vertex/shadow crash flag immediately after
+        // drawing the ship (Lander.arm:2214-2217), so a vertex penetrating the
+        // ground triggers the crash in the same frame. The previous code only
+        // read the flag at the start of the NEXT frame's collision check.
+        var random = new RandomGenerator(25);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        var state = engine.State;
+        // Ship on the pad with the nose pitched straight down, so the nose tip
+        // penetrates the terrain on the first drawn frame
+        state.ShipPitch = 0x40000000;  // 90 degrees
+        state.XPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        state.ZPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        state.YPlayer = FixedPoint.LAUNCHPAD_Y;
+        state.XVelocity = 0;
+        state.YVelocity = 0;
+        state.ZVelocity = 0;
+
+        engine.Update(new TestInput());
+
+        Assert.That(state.CrashLoopCount, Is.EqualTo(30),
+            "Vertex penetration must trigger the crash in the same frame");
+    }
+
+    [Test]
     public void ShipLowOverObject_Crashes()
     {
         // The original reads the object map at the ship's tile whenever the
