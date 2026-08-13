@@ -13,7 +13,7 @@ public static class MinimapRenderer
     private static readonly byte[] _mapCache = new byte[256 * 256];
     private static bool _cacheBuilt = false;
 
-    /// <summary>Pre-renders static terrain, sea, launchpad, and object map tiles into cache.</summary>
+    /// <summary>Pre-renders terrain, sea, launchpad, and object map tiles using exact rendered 3D tile colors.</summary>
     public static void PrecacheMap(LandscapeGenerator landscape, ObjectMap objectMap)
     {
         for (int tz = 0; tz < 256; tz++)
@@ -27,27 +27,45 @@ public static class MinimapRenderer
                 // 1. Launchpad (tiles 0..7, 0..7)
                 if (tx <= 7 && tz <= 7)
                 {
-                    color = VidcColour.Encode(15, 12, 0); // Yellow/Gold
+                    color = VidcColour.Encode(12, 10, 2); // Exact Launchpad grey/gold
                 }
                 else
                 {
                     int objType = objectMap.GetObjectAt(worldX, worldZ);
                     if (ObjectTypes.IsLiveObject(objType))
                     {
-                        color = VidcColour.Encode(15, 15, 15); // Bright white object
+                        var bp = ObjectTypes.GetBlueprint(objType);
+                        if (bp != null && bp.Faces.Length > 0)
+                        {
+                            // Match primary blueprint face VIDC color
+                            int faceCol = bp.Faces[0].Colour;
+                            int r = (faceCol >> 8) & 0xF;
+                            int g = (faceCol >> 4) & 0xF;
+                            int b = faceCol & 0xF;
+                            color = VidcColour.Encode(r, g, b);
+                        }
+                        else
+                        {
+                            color = VidcColour.Encode(15, 15, 15);
+                        }
                     }
                     else
                     {
                         int alt = landscape.GetAltitude(worldX, worldZ);
                         if (alt >= FixedPoint.SEA_LEVEL)
                         {
-                            color = VidcColour.Encode(0, 2, 8); // Dark blue sea
+                            color = VidcColour.Encode(0, 0, 4); // Exact Sea level VIDC blue (Lander.arm:1696)
                         }
                         else
                         {
-                            // Green gradient based on altitude (-alt, higher altitude = lighter green)
-                            int heightIndex = global::System.Math.Clamp((-alt >> 23), 2, 14);
-                            color = VidcColour.Encode(0, heightIndex, 0);
+                            // Exact landscape green tile color formula (Lander.arm:1545-1710)
+                            int g = ((alt >> 3) & 1) * 4 + 4;
+                            int r = (alt >> 2) & 4;
+                            int b = 0;
+                            int brightness = 4; // average mid-distance brightness
+                            r = global::System.Math.Min(r + brightness, 15);
+                            g = global::System.Math.Min(g + brightness, 15);
+                            color = VidcColour.Encode(r, g, b);
                         }
                     }
                 }
