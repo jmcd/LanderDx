@@ -98,8 +98,9 @@ public class GameEngine
 
         _state.UpdateGravity();
 
-        // 2. Exhaust particles if engines firing
-        if (_state.FuelBurnRate != 0)
+        // 2. Exhaust particles if engines firing (bit 1 = hover, bit 2 = full thrust).
+        // Bit 0 is the fire key — must NOT trigger exhaust.
+        if ((_state.FuelBurnRate & 6) != 0)
             _particles.SpawnExhaust(_state.XPlayer, _state.YPlayer, _state.ZPlayer,
                 _state.XVelocity, _state.YVelocity, _state.ZVelocity);
 

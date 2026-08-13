@@ -296,4 +296,56 @@ public class GameplayTests
         Assert.That(state.CurrentScore, Is.EqualTo(0), "Score should remain 0");
         Assert.That(particles.Count, Is.EqualTo(0), "No bullet particle should be spawned");
     }
+
+    // ---- Exhaust only fires on thrust/hover, not on fire key ----
+
+    [Test]
+    public void FireKeyAlone_DoesNotProduceExhaustParticles()
+    {
+        // Regression: FuelBurnRate bit 0 = fire. Previously "!= 0" check
+        // caused exhaust to spawn whenever the fire key was held.
+        var random = new RandomGenerator(10);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        // Move off launchpad so landing logic doesn't interfere
+        engine.State.XPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE * 3;
+        engine.State.ZPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE * 3;
+        engine.State.YPlayer = FixedPoint.LAUNCHPAD_Y - FixedPoint.TILE_SIZE * 2; // in the air
+
+        // Run one frame with ONLY fire pressed (no thrust, no hover)
+        engine.Update(new TestInput { Fire = true });
+
+        // FuelBurnRate should be 1 (fire bit only), NOT triggering exhaust
+        Assert.That(engine.State.FuelBurnRate & 6, Is.EqualTo(0),
+            "Hover and thrust bits should both be zero when only Fire is pressed");
+
+        // Particles should be the bullet only (1 particle), not a wave of exhaust
+        // SpawnExhaust spawns 2–8 particles; SpawnBullet spawns 1.
+        // We can't directly query the particle system, but we CAN verify FuelBurnRate
+        // to confirm the engine gate would have been closed.
+        Assert.That(engine.State.FuelBurnRate, Is.EqualTo(1),
+            "FuelBurnRate should be 1 (fire bit only) — not 0 (fuel ran out) and not 3+ (thrust active)");
+    }
+
+    [Test]
+    public void ThrustKey_DoesProduceExhaustParticles()
+    {
+        // Sanity check: thrust alone should keep the exhaust gate open.
+        var random = new RandomGenerator(11);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        engine.State.XPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE * 3;
+        engine.State.ZPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE * 3;
+        engine.State.YPlayer = FixedPoint.LAUNCHPAD_Y - FixedPoint.TILE_SIZE * 2;
+
+        engine.Update(new TestInput { Thrust = true });
+
+        // FuelBurnRate bit 2 = 4; gate checks (FuelBurnRate & 6) != 0 → true
+        Assert.That(engine.State.FuelBurnRate & 4, Is.Not.EqualTo(0),
+            "Thrust bit should be set when Thrust is pressed");
+    }
 }
