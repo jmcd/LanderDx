@@ -124,6 +124,9 @@ public static class FixedPoint
     /// <summary>Initial score (also the starting bullet count).</summary>
     public const int INITIAL_SCORE = 500;
 
+    /// <summary>Initial high score (Lander.arm:11977-11979: EQUD 500).</summary>
+    public const int INITIAL_HIGH_SCORE = 500;
+
     /// <summary>Initial number of lives.</summary>
     public const int INITIAL_LIVES = 3;
 

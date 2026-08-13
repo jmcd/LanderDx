@@ -112,6 +112,7 @@ public class GameEngineIntegrationTests
 
         var state = engine.State;
         Assert.That(state.CurrentScore, Is.EqualTo(FixedPoint.INITIAL_SCORE));
+        Assert.That(state.HighScore, Is.EqualTo(FixedPoint.INITIAL_HIGH_SCORE));
         Assert.That(state.RemainingLives, Is.EqualTo(FixedPoint.INITIAL_LIVES));
         Assert.That(state.PlayingGame, Is.EqualTo(-1));  // Playing
         Assert.That(state.Gravity, Is.EqualTo(FixedPoint.BASE_GRAVITY));

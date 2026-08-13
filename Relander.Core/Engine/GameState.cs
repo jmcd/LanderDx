@@ -80,6 +80,7 @@ public class GameState
         FuelLevel = FixedPoint.INITIAL_FUEL_LEVEL;
         Gravity = FixedPoint.BASE_GRAVITY;
         RemainingLives = FixedPoint.INITIAL_LIVES;
+        HighScore = FixedPoint.INITIAL_HIGH_SCORE;  // 500 — the original initialises highScore to 500 at Entry (Lander.arm:11977-11979)
         PlayingGame = -1; // playing
         MainLoopCount = 0;
     }
