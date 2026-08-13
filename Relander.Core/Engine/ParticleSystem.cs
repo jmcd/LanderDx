@@ -343,9 +343,10 @@ public class ParticleSystem
     {
         for (int cluster = 0; cluster < 3; cluster++)
         {
-            // 2 sparks (FLAG_FADE)
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 9, 29);
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 9, 29);
+            // 2 sparks: fade|splash|bounce|gravity, life 8 + rand >> 29, velocity
+            // jitter shift 8 (+/-&1000000) — Lander.arm:4247-4267.
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
             // 1 debris particle
             byte debrisColor = VidcColour.Encode(8, 4, 2);
             AddMovingParticle(x, y, z, 0, 0, 0, 16, FLAG_GRAVITY | FLAG_BOUNCE | debrisColor, 8, 28);
@@ -395,15 +396,16 @@ public class ParticleSystem
     {
         for (int cluster = 0; cluster < clusters; cluster++)
         {
-            // 2 sparks (FLAG_FADE)
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 8, 28);
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_GRAVITY | FLAG_BOUNCE, 8, 28);
+            // 2 sparks: fade|splash|bounce|gravity, life 8 + rand >> 29 (the
+            // original's range 0..8, Lander.arm:4261-4263 — the previous shift
+            // 28 let sparks live 8 frames longer), velocity jitter shift 8.
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
+            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
             // 1 debris particle
             byte debrisColor = VidcColour.Encode(8, 4, 2);
             AddMovingParticle(x, y, z, 0, 0, 0, 16, FLAG_GRAVITY | FLAG_BOUNCE | debrisColor, 7, 27);
             // 1 smoke particle
-            byte smokeColor = VidcColour.Encode(8, 8, 8);
-            AddMovingParticle(x, y, z, 0, -0x80000, 0, 24, FLAG_FADE | smokeColor, 9, 28);
+            AddSmokeParticle(x, y, z);
         }
     }
 

@@ -648,6 +648,45 @@ public class ParticleTests
     }
 
     [Test]
+    public void ExplosionSparks_FadeSplashBounceWithFullVelocity()
+    {
+        // AddSparkParticleToBuffer (Lander.arm:4247-4267): flags &001D0000 =
+        // fade|splash|bounce|gravity, life 8 + rand >> 29 (0..8), velocity
+        // jitter shift 8 (+/-&1000000). The previous port lacked the splash bit
+        // (sparks bounced on the sea instead of mini-splashing), flew at half
+        // velocity (shift 9 in the small explosion) and lived up to 8 frames
+        // longer (shift 28 in the big explosion).
+        var state = new GameState();
+        state.Initialize();
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        particles.AddBigExplosion(0, 0, 0);
+
+        int sparksChecked = 0;
+        for (int idx = 0; idx < particles.Count; idx++)
+        {
+            var p = particles.GetParticle(idx);
+            if ((p.Flags & ParticleSystem.FLAG_FADE) == 0) continue;  // not a spark
+            sparksChecked++;
+            Assert.That(p.Flags & ParticleSystem.FLAG_SPLASH, Is.Not.EqualTo(0),
+                "Sparks must splash on the sea");
+            Assert.That(p.Flags & ParticleSystem.FLAG_BOUNCE, Is.Not.EqualTo(0));
+            Assert.That(p.Flags & ParticleSystem.FLAG_GRAVITY, Is.Not.EqualTo(0));
+            Assert.That(p.Life, Is.InRange(8, 8 + 7), "Life 8 + rand >> 29 (max 15)");
+            Assert.That(
+                global::System.Math.Abs((long)p.VX) <= 0x1000000
+                && global::System.Math.Abs((long)p.VY) <= 0x1000000
+                && global::System.Math.Abs((long)p.VZ) <= 0x1000000,
+                Is.True, "Velocity jitter at shift 8 (+/-&1000000)");
+        }
+        Assert.That(sparksChecked, Is.GreaterThan(0), "Should find spark particles");
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);
