@@ -177,6 +177,28 @@ public class GameEngineIntegrationTests
     }
 
     [Test]
+    public void Engine_ZeroFuel_PreventsFiring()
+    {
+        // At zero fuel the original zeroes the whole fuelBurnRate including the
+        // fire bit (Lander.arm:1771-1773), and fires only on bit 0 being set
+        // (Lander.arm:2379) — bullets must not fire, and the score must not
+        // drain. The port fired on the raw key state instead.
+        var random = new Relander.Core.Engine.RandomGenerator(32);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+        engine.State.FuelLevel = 0;
+
+        int scoreBefore = engine.State.CurrentScore;
+        engine.Update(new TestInput { Fire = true });
+
+        Assert.That(engine.State.FuelBurnRate, Is.EqualTo(0),
+            "Burn rate must be zeroed (including the fire bit) when out of fuel");
+        Assert.That(engine.State.CurrentScore, Is.EqualTo(scoreBefore),
+            "No bullet fired at zero fuel — score must not drain");
+    }
+
+    [Test]
     public void Engine_ZeroFuel_PreventsThrust()
     {
         var random = new Relander.Core.Engine.RandomGenerator(5);

@@ -112,8 +112,11 @@ public class GameEngine
             _particles.SpawnExhaust(_state.XPlayer, _state.YPlayer, _state.ZPlayer,
                 _state.XVelocity, _state.YVelocity, _state.ZVelocity);
 
-        // 3. Bullet firing if fire button pressed
-        if (input.Fire)
+        // 3. Bullet firing: gated on the fire bit of the burn rate. When fuel
+        // runs out ReadKeyboardInput zeroes the whole burn rate (including bit 0,
+        // Lander.arm:1771-1773), and the original fires only on
+        // TST R10, #%00000001 (Lander.arm:2379) — so no bullets at zero fuel.
+        if ((_state.FuelBurnRate & 1) != 0)
             _particles.SpawnBullet(_state.XPlayer, _state.YPlayer, _state.ZPlayer,
                 _state.XVelocity, _state.YVelocity, _state.ZVelocity,
                 _state.XNoseV, _state.YNoseV, _state.ZNoseV);
