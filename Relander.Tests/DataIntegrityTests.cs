@@ -141,4 +141,19 @@ public class DataIntegrityTests
         Assert.That(r1, Is.EqualTo(unchecked((int)0xB407079E)),
             "First R1 must match the ROM-seeded sequence");
     }
+
+
+    [Test]
+    public void DivisionTable_MatchesRomBytes()
+    {
+        // SHA-256 of the 4096 EQUD values at Lander.arm:13977-15070 (computed
+        // from the reconstructed source, little-endian). The previous table was
+        // the transpose with misplaced -1 sentinels.
+        var hash = System.Security.Cryptography.SHA256.HashData(
+            System.Runtime.InteropServices.MemoryMarshal.AsBytes(DivisionTable.Data.AsSpan()));
+        string hex = Convert.ToHexString(hash).ToLowerInvariant();
+        Assert.That(hex, Is.EqualTo("6ed509a91888297d4eca2242cf43c97d583ae1bcc5c3d9d739547cea00eb3662"),
+            "DivisionTable must match the ROM's numerator-major layout byte for byte");
+    }
+
 }
