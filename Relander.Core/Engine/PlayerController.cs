@@ -13,16 +13,18 @@ public class PlayerController
     private readonly GameState _state;
     private readonly GraphicsBuffers _buffers;
     private readonly LandscapeGenerator _landscape;
+    private readonly ObjectMap _objectMap;
 
     // Yaw/pitch delta per frame when key held (full circle = 0x40000000 * 4)
     private const int YAW_DELTA = 0x08000000;
     private const int PITCH_DELTA = 0x06000000;
 
-    public PlayerController(GameState state, GraphicsBuffers buffers, LandscapeGenerator landscape)
+    public PlayerController(GameState state, GraphicsBuffers buffers, LandscapeGenerator landscape, ObjectMap objectMap)
     {
         _state = state;
         _buffers = buffers;
         _landscape = landscape;
+        _objectMap = objectMap;
     }
 
     /// <summary>
@@ -218,6 +220,16 @@ public class PlayerController
         // Altitude at which the undercarriage touches the ground
         // (terrainAlt is Y coord of ground surface; UNDERCARRIAGE_Y is the ship half-height)
         int groundContact = terrainAlt - FixedPoint.UNDERCARRIAGE_Y;
+
+        // --- Ship vs ground objects (Lander.arm:2114-2135) ---
+        // When the undercarriage is within SAFE_HEIGHT of the ground, any live
+        // object (types 1-11) on the ship's tile destroys the ship.
+        if ((uint)(groundContact - y) < (uint)FixedPoint.SAFE_HEIGHT)
+        {
+            int objType = _objectMap.GetObjectAt(x, z);
+            if (objType >= ObjectTypes.FIRST_LIVE_TYPE && objType <= ObjectTypes.LAST_LIVE_TYPE)
+                return false;
+        }
 
         // Landing and crash checks only run once the ship has descended below the
         // contact altitude (Lander.arm:2167-2168: CMP R1, R0 / BLGT LandOnLaunchpad).

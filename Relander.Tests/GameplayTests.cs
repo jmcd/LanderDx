@@ -166,6 +166,68 @@ public class GameplayTests
             "Too fast to land — ship must not snap to the pad");
     }
 
+    [Test]
+    public void ShipLowOverObject_Crashes()
+    {
+        // The original reads the object map at the ship's tile whenever the
+        // undercarriage is within SAFE_HEIGHT of the ground, and any live object
+        // (types 1-11) there destroys the ship (Lander.arm:2114-2150).
+        var random = new RandomGenerator(23);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        // Place a tree at tile (10, 10), away from the launchpad
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        engine.ObjectMap.SetObjectAt(objX, objZ, 1);
+
+        var state = engine.State;
+        state.XPlayer = objX;
+        state.ZPlayer = objZ;
+        int terrainAlt = engine.Landscape.GetAltitude(objX, objZ);
+        int groundContact = terrainAlt - FixedPoint.UNDERCARRIAGE_Y;
+        // 0.75 tiles above the contact altitude — inside the object-check zone
+        state.YPlayer = groundContact - FixedPoint.SAFE_HEIGHT / 2;
+        state.XVelocity = 0;
+        state.YVelocity = 0;
+        state.ZVelocity = 0;
+
+        engine.Update(new TestInput());
+
+        Assert.That(state.CrashLoopCount, Is.EqualTo(30),
+            "Flying low over a live object should trigger the crash sequence");
+    }
+
+    [Test]
+    public void ShipLowOverEmptyTile_DoesNotCrash()
+    {
+        // Sanity check: the same low flight over an empty tile is harmless.
+        var random = new RandomGenerator(24);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        engine.ObjectMap.SetObjectAt(objX, objZ, (byte)ObjectTypes.NO_OBJECT);
+
+        var state = engine.State;
+        state.XPlayer = objX;
+        state.ZPlayer = objZ;
+        int terrainAlt = engine.Landscape.GetAltitude(objX, objZ);
+        int groundContact = terrainAlt - FixedPoint.UNDERCARRIAGE_Y;
+        state.YPlayer = groundContact - FixedPoint.SAFE_HEIGHT / 2;
+        state.XVelocity = 0;
+        state.YVelocity = 0;
+        state.ZVelocity = 0;
+
+        engine.Update(new TestInput());
+
+        Assert.That(state.CrashLoopCount, Is.EqualTo(0),
+            "No object on the tile means no collision crash");
+    }
+
     // ---- Launchpad refuelling ----
 
     [Test]

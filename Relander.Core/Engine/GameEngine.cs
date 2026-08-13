@@ -40,7 +40,7 @@ public class GameEngine
 
         _landscape = new LandscapeGenerator(_state);
         _objectMap = new ObjectMap(_landscape, _random);
-        _player = new PlayerController(_state, _buffers, _landscape);
+        _player = new PlayerController(_state, _buffers, _landscape, _objectMap);
         _particles = new ParticleSystem(_state, _landscape, _objectMap, _buffers, _random);
 
         _framebuffer = new byte[320 * 240];

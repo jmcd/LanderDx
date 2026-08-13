@@ -39,7 +39,8 @@ public class PlayerOrientationTests
 
         var gen = new LandscapeGenerator(state);
         var buffers = new GraphicsBuffers();
-        var player = new PlayerController(state, buffers, gen);
+        var objectMap = new ObjectMap(gen, new RandomGenerator(42));
+        var player = new PlayerController(state, buffers, gen, objectMap);
 
         // Move off launchpad to avoid landing/refuel interference
         state.XPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE;
@@ -75,7 +76,8 @@ public class PlayerOrientationTests
 
         var gen = new LandscapeGenerator(state);
         var buffers = new GraphicsBuffers();
-        var player = new PlayerController(state, buffers, gen);
+        var objectMap = new ObjectMap(gen, new RandomGenerator(42));
+        var player = new PlayerController(state, buffers, gen, objectMap);
         player.ComputeRotationMatrix();
 
         // yRoofV should be positive (roof = world DOWN, thrust subtracts → pushes UP)
@@ -116,7 +118,8 @@ public class PlayerOrientationTests
 
         var gen = new LandscapeGenerator(state);
         var buffers = new GraphicsBuffers();
-        var player = new PlayerController(state, buffers, gen);
+        var objectMap = new ObjectMap(gen, new RandomGenerator(42));
+        var player = new PlayerController(state, buffers, gen, objectMap);
 
         // Move off launchpad
         state.XPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE;
