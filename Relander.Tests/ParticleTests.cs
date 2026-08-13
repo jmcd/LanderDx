@@ -348,6 +348,75 @@ public class ParticleTests
     }
 
     [Test]
+    public void DestroyParticle_HighAboveGround_DoesNotDestroyObject()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        // Place a small leafy tree (type 1) at tile (10, 10)
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        objectMap.SetObjectAt(objX, objZ, 1);
+
+        // Destroy-flagged particle 10 tiles above the ground at that tile:
+        // the original only destroys objects when within SAFE_HEIGHT of the ground
+        // (Lander.arm:3292-3296), so this object must survive.
+        int groundAlt = landscape.GetAltitude(objX, objZ);
+        int bulletY = groundAlt - 10 * FixedPoint.TILE_SIZE;
+
+        particles.AddParticle(objX, bulletY, objZ, 0, 0, 0, 20, ParticleSystem.FLAG_DESTROY);
+        particles.UpdateAndDraw();
+
+        Assert.That(objectMap.GetObjectAt(objX, objZ), Is.EqualTo(1),
+            "Object must survive a destroy-flagged particle high above the ground");
+    }
+
+    [Test]
+    public void DestroyParticle_CloseToGround_DestroysObject()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        // Place a small leafy tree (type 1) at tile (10, 10)
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        objectMap.SetObjectAt(objX, objZ, 1);
+
+        // Destroy-flagged particle within SAFE_HEIGHT (1.5 tiles) of the ground:
+        // the object must be destroyed (live type + 12 = smoking remains).
+        int groundAlt = landscape.GetAltitude(objX, objZ);
+        int bulletY = groundAlt - FixedPoint.SAFE_HEIGHT / 2;
+
+        particles.AddParticle(objX, bulletY, objZ, 0, 0, 0, 20, ParticleSystem.FLAG_DESTROY);
+        particles.UpdateAndDraw();
+
+        Assert.That(objectMap.GetObjectAt(objX, objZ), Is.EqualTo(13),
+            "Object within SAFE_HEIGHT of the particle should be destroyed (type 1 + 12)");
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);

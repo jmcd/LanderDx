@@ -132,8 +132,11 @@ public class ParticleSystem
             // Object destruction
             if ((flags & FLAG_DESTROY) != 0)
             {
-                int tileAlt = _landscape.GetAltitude(x, z);
-                if (y - tileAlt < FixedPoint.SAFE_HEIGHT)
+                // Only destroy objects when the particle is within SAFE_HEIGHT of the
+                // ground at this tile (Lander.arm:3292-3296: R8 = altitude - y, proceed
+                // only when R8 < SAFE_HEIGHT unsigned, i.e. 0 <= altitude - y < SAFE_HEIGHT).
+                // The unsigned compare also rejects particles below the terrain.
+                if ((uint)(terrainAlt - y) < (uint)FixedPoint.SAFE_HEIGHT)
                 {
                     int objType = _objectMap.GetObjectAt(x, z);
                     if (ObjectTypes.IsLiveObject(objType))
