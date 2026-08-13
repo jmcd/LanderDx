@@ -176,9 +176,9 @@ public class GameEngine
     /// </summary>
     private void DropRocksFromTheSky()
     {
-        if (_state.CurrentScore < 800) return;
+        if (_state.CurrentScore < FixedPoint.ROCK_SCORE_THRESHOLD) return;
 
-        int scoreDelta = _state.CurrentScore - 800;
+        int scoreDelta = _state.CurrentScore - FixedPoint.ROCK_SCORE_THRESHOLD;
 
         var (rand0, rand1) = _random.GetRandomNumbers();
         int r0 = (int)((uint)rand0 >> 18); // 0..16383
