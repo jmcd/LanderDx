@@ -270,13 +270,18 @@ public class PlayerController
                 if ((uint)totalSpeed >= FixedPoint.LANDING_SPEED)
                     return true;
 
-                // Safe landing — snap to pad and refuel
+                // Safe landing — snap to pad and refuel. STRLO semantics
+                // (Lander.arm:2547-2550: ADD R3, R3, #&20 / CMP R3, #&1400 /
+                // STRLO R3): the new level is stored only when fuel + 0x20 is
+                // below 0x1400 — once refuelling would reach the cap the fuel
+                // freezes where it is instead of saturating at 5120.
                 _state.YPlayer = FixedPoint.LAUNCHPAD_Y;
                 _state.XVelocity = 0;
                 _state.YVelocity = 0;
                 _state.ZVelocity = 0;
-                _state.FuelLevel = global::System.Math.Min(FixedPoint.MAX_FUEL_LEVEL,
-                    _state.FuelLevel + FixedPoint.FUEL_REFUEL_RATE);
+                int newFuel = _state.FuelLevel + FixedPoint.FUEL_REFUEL_RATE;
+                if (newFuel < FixedPoint.MAX_FUEL_LEVEL)
+                    _state.FuelLevel = newFuel;
                 return true;
             }
 

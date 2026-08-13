@@ -289,6 +289,32 @@ public class GameplayTests
     }
 
     [Test]
+    public void Refuelling_FreezesBelowCap_WhenAdditionWouldReachCap()
+    {
+        // STRLO semantics (Lander.arm:2547-2550): the refuel store is skipped
+        // whenever fuel + 0x20 >= 0x1400, so fuel freezes below 5120 rather
+        // than saturating at it (no partial refuel).
+        var random = new RandomGenerator(51);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        var state = engine.State;
+        state.FuelLevel = FixedPoint.MAX_FUEL_LEVEL - 20;  // 5100: +32 would cross the cap
+        state.XPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        state.ZPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        state.YPlayer = FixedPoint.LAUNCHPAD_Y;
+        state.XVelocity = 0;
+        state.YVelocity = 1;  // re-triggers the landing on the next frame
+        state.ZVelocity = 0;
+
+        engine.Update(new TestInput());
+
+        Assert.That(state.FuelLevel, Is.EqualTo(FixedPoint.MAX_FUEL_LEVEL - 20),
+            "Fuel must freeze below the cap when +32 would reach or cross 5120");
+    }
+
+    [Test]
     public void Refuelling_DoesNotExceedMaxFuelLevel()
     {
         var random = new RandomGenerator(5);
