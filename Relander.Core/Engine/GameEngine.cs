@@ -413,10 +413,10 @@ public class GameEngine
             screenBuf.Slice(19 * stride, len).Fill(fuelColor);
         }
 
-        // 2. Text header on text row 1 (pixel y = 8)
+        // 2. Text header on text row 1 (pixel y = 8). The original prints all
+        // three values through PrintScoreInBothBanks in the default VDU
+        // foreground (white) — no per-value colours.
         byte white = VidcColour.Encode(15, 15, 15);
-        byte yellow = VidcColour.Encode(15, 15, 0);
-        byte cyan = VidcColour.Encode(0, 15, 15);
 
         // Col 0: Bullet count / current score
         string scoreStr = _state.CurrentScore.ToString();
@@ -424,11 +424,11 @@ public class GameEngine
 
         // Col 30 (x = 240): Remaining lives
         string livesStr = _state.RemainingLives.ToString();
-        SystemFont.DrawString(screenBuf, stride, 240, 8, livesStr, yellow);
+        SystemFont.DrawString(screenBuf, stride, 240, 8, livesStr, white);
 
         // Col 35 (x = 280): High score
         string highStr = _state.HighScore.ToString();
-        SystemFont.DrawString(screenBuf, stride, 280, 8, highStr, cyan);
+        SystemFont.DrawString(screenBuf, stride, 280, 8, highStr, white);
 
         // 3. Game Over text message when lives <= 0 (middle of play area, y = 128)
         if (_state.RemainingLives <= 0)
