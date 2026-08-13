@@ -15,8 +15,8 @@ public class PlayerOrientationTests
         state.Initialize();
         state.PlaceOnLaunchpad();
 
-        Assert.That(state.ShipPitch, Is.EqualTo(0),
-            "Initial pitch=0: yRoofV=+1 (thrust up). Model Y-flipped so canopy (-Y) maps to world UP.");
+        Assert.That(state.ShipPitch, Is.EqualTo(1),
+            "Initial pitch=1 (Lander.arm:12453-12454: MOV R0, #1): yRoofV=+1 (thrust up). Model Y-flipped so canopy (-Y) maps to world UP.");
     }
 
     [Test]
@@ -72,7 +72,7 @@ public class PlayerOrientationTests
             "v0 (canopy) has positive local Y in original model");
         Assert.That(ship.Vertices[5].Y, Is.LessThan(0),
             "v5 (undercarriage) has negative local Y in original model");
-        Assert.That(state.ShipPitch, Is.EqualTo(0));
+        Assert.That(state.ShipPitch, Is.EqualTo(1));
 
         var gen = new LandscapeGenerator(state);
         var buffers = new GraphicsBuffers();

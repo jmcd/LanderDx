@@ -94,7 +94,7 @@ public class GameState
         XCamera = 0;
         ZCamera = 0;
         ShipDirection = 0;
-        ShipPitch = 0;  // Level: yRoofV=+1 (thrust up). Model Y-flipped so canopy (-Y) maps to world UP.
+        ShipPitch = 1;  // Lander.arm:12453-12454: MOV R0, #1. Level: yRoofV=+1 (thrust up). Model Y-flipped so canopy (-Y) maps to world UP. (Index-identical to 0 in the sine lookup, but kept verbatim.)
         int padHalf = FixedPoint.LAUNCHPAD_SIZE / 2;
         XPlayer = padHalf;
         YPlayer = FixedPoint.LAUNCHPAD_Y;

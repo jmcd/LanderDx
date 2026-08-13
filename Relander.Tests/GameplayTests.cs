@@ -556,7 +556,7 @@ public class GameplayTests
         int xNoseVFrame2 = engine.State.XNoseV;
         int zSideVFrame2 = engine.State.ZSideV;
 
-        Assert.That(engine.State.ShipPitch, Is.EqualTo(0), "Ship orientation unchanged");
+        Assert.That(engine.State.ShipPitch, Is.EqualTo(1), "Ship orientation unchanged");
         Assert.That(engine.State.ShipDirection, Is.EqualTo(0), "Ship orientation unchanged");
         Assert.That(xNoseVFrame2, Is.Not.EqualTo(xNoseVFrame1),
             "The rotation matrix must change with the main loop counter (rock spin)");
