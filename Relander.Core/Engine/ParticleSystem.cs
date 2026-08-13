@@ -262,8 +262,11 @@ public class ParticleSystem
         int size = global::System.Math.Clamp((int)((uint)cz >> 25), 0, 8);
         byte colour = (byte)(flags & 0xFF);
 
-        // Draw particle
-        int bufferIdx = _buffers.GetBufferIndex(cz - FixedPoint.TILE_SIZE);
+        // Draw particle. The buffer index already includes the +TILE_SIZE offset
+        // (Lander.arm:8451-8453: RSB R14, R8, #LANDSCAPE_Z / ADD R14, R14, #TILE_SIZE);
+        // passing cz - TILE_SIZE shifted every particle one buffer nearer the camera,
+        // so particles overpainted objects and landscape up to a tile nearer than them.
+        int bufferIdx = _buffers.GetBufferIndex(cz);
         _buffers.AddParticle(bufferIdx, size, screenX, screenY, colour);
 
         // Draw shadow on ground (one buffer back, command 9-17)
@@ -271,7 +274,7 @@ public class ParticleSystem
         int shadowCy = terrainAlt - _state.YCamera;
         if (Projection.Project(cx, shadowCy, cz, out int shadowSx, out int shadowSy) && Projection.IsOnScreen(shadowSx, shadowSy))
         {
-            int shadowIdx = _buffers.GetShadowBufferIndex(cz - FixedPoint.TILE_SIZE);
+            int shadowIdx = _buffers.GetShadowBufferIndex(cz);
             _buffers.AddParticle(shadowIdx, size + 9, shadowSx, shadowSy, 0);
         }
     }

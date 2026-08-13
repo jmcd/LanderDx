@@ -489,6 +489,50 @@ public class ParticleTests
     }
 
     [Test]
+    public void Particle_BufferIndex_MatchesOriginalDepth()
+    {
+        // The buffer index formula already includes the +TILE_SIZE offset
+        // (Lander.arm:8451-8453). A particle at cz = 15 tiles (the ship's depth)
+        // must land in buffer (20 - 15 + 1) = 6 and its shadow in buffer
+        // (20 - 15) = 5. The previous code passed cz - TILE_SIZE, shifting both
+        // one buffer nearer the camera.
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+        particles.AddParticle(state.XPlayer, state.YPlayer, state.ZPlayer,
+            0, 0, 0, 10, VidcColour.Encode(15, 15, 15));
+
+        particles.UpdateAndDraw();
+        buffers.AddTerminators();
+
+        int particleBuffer = -1, shadowBuffer = -1;
+        for (int b = 0; b < buffers.BufferCount; b++)
+        {
+            var data = buffers.GetBufferData(b);
+            for (int i = 0; i < data.Length; i += 2)
+            {
+                if (data[i] <= 8) particleBuffer = b;
+                else if (data[i] >= 9 && data[i] <= 17) shadowBuffer = b;
+            }
+        }
+
+        Assert.That(particleBuffer, Is.EqualTo(6),
+            $"Particle at cz = 15 tiles should use buffer 6, got {particleBuffer}");
+        Assert.That(shadowBuffer, Is.EqualTo(5),
+            $"Particle shadow should use buffer 5, got {shadowBuffer}");
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);
