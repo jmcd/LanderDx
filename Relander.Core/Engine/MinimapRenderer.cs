@@ -60,7 +60,7 @@ public static class MinimapRenderer
                         {
                             // Exact landscape green tile color formula (Lander.arm:1545-1710)
                             int g = ((alt >> 3) & 1) * 4 + 4;
-                            int r = (alt >> 2) & 4;
+                            int r = alt & 4;  // Red = altitude bit 2 (Lander.arm:1608)
                             int b = 0;
                             int brightness = 4; // average mid-distance brightness
                             r = global::System.Math.Min(r + brightness, 15);
