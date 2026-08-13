@@ -51,6 +51,15 @@ public class ParticleSystem
 
     public int Count => _endIndex;
 
+    /// <summary>Read-only snapshot of a particle's data (for tests and diagnostics).</summary>
+    public (int X, int Y, int Z, int VX, int VY, int VZ, int Life, int Flags) GetParticle(int index)
+    {
+        int i = index * 8;
+        return (_data[i + P_X], _data[i + P_Y], _data[i + P_Z],
+            _data[i + P_VX], _data[i + P_VY], _data[i + P_VZ],
+            _data[i + P_LIFE], _data[i + P_FLAGS]);
+    }
+
     /// <summary>Add a particle to the buffer. Returns false if buffer is full.</summary>
     public bool AddParticle(int x, int y, int z, int vx, int vy, int vz, int lifespan, int flags)
     {
@@ -341,9 +350,24 @@ public class ParticleSystem
             byte debrisColor = VidcColour.Encode(8, 4, 2);
             AddMovingParticle(x, y, z, 0, 0, 0, 16, FLAG_GRAVITY | FLAG_BOUNCE | debrisColor, 8, 28);
             // 1 smoke particle
-            byte smokeColor = VidcColour.Encode(8, 8, 8);
-            AddMovingParticle(x, y, z, 0, -0x80000, 0, 24, FLAG_FADE | smokeColor, 10, 28);
+            AddSmokeParticle(x, y, z);
         }
+    }
+
+    /// <summary>
+    /// Add a grey smoke particle that slowly rises and bounces (Lander.arm:3885-3977,
+    /// AddSmokeParticleToBuffer): colour = (rand & 7) + 3 on all channels, flags =
+    /// bounce only (no fade — the previous port made smoke fade white-to-red like a
+    /// spark), vy = ~SMOKE_RISING_SPEED (MVN, i.e. -(SMOKE_RISING_SPEED + 1)), life
+    /// 15 + rand >> 25 (0..127), velocity jitter +/- 2^19 (shift 13).
+    /// </summary>
+    private void AddSmokeParticle(int x, int y, int z)
+    {
+        var (rand0, _) = _random.GetRandomNumbers();
+        int grey = (rand0 & 7) + 3;
+        byte smokeColor = VidcColour.Encode(grey, grey, grey);
+        AddMovingParticle(x, y, z, 0, -(FixedPoint.SMOKE_RISING_SPEED + 1), 0,
+            15, FLAG_BOUNCE | smokeColor, 13, 25);
     }
 
     /// <summary>Splash a particle into the sea (Lander.arm:3413-3436).</summary>

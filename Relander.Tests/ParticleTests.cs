@@ -569,6 +569,44 @@ public class ParticleTests
     }
 
     [Test]
+    public void ExplosionSmoke_IsGreyBouncingRisingParticle()
+    {
+        // AddSmokeParticleToBuffer (Lander.arm:3885-3977): random grey 3-10 on
+        // all channels, flags = bounce only (no fade), vy = ~SMOKE_RISING_SPEED
+        // (rising), life 15 + rand >> 25, velocity jitter shift 13.
+        var state = new GameState();
+        state.Initialize();
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        particles.AddSmallExplosion(0, 0, 0);
+        Assert.That(particles.Count, Is.EqualTo(12), "3 clusters x 4 particles");
+
+        // Smoke particles are the 4th of each cluster
+        for (int idx = 3; idx < particles.Count; idx += 4)
+        {
+            var p = particles.GetParticle(idx);
+            Assert.That(p.Flags & ParticleSystem.FLAG_BOUNCE, Is.Not.EqualTo(0),
+                "Smoke must bounce on the ground");
+            Assert.That(p.Flags & ParticleSystem.FLAG_FADE, Is.EqualTo(0),
+                "Smoke must not fade white-to-red like a spark");
+            byte colour = (byte)(p.Flags & 0xFF);
+            var (r, g, b) = VidcColour.DecodeToRgb24(colour);
+            Assert.That(r, Is.EqualTo(g), "Smoke must be grey");
+            Assert.That(g, Is.EqualTo(b), "Smoke must be grey");
+            Assert.That(r / 17, Is.InRange(3, 10), "Grey intensity 3..10");
+            int baseVy = -(FixedPoint.SMOKE_RISING_SPEED + 1);
+            Assert.That(p.VY, Is.InRange(baseVy - 0x80000, baseVy + 0x80000),
+                "Rising speed ~SMOKE_RISING_SPEED plus jitter");
+            Assert.That(p.VY, Is.LessThan(0), "Smoke rises");
+            Assert.That(p.Life, Is.InRange(15, 15 + 127), "Life 15 + rand >> 25");
+        }
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);
