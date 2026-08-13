@@ -52,6 +52,7 @@ public static class Program
         // Main game loop
         while (!Raylib.WindowShouldClose() && running)
         {
+            input.PollEvents();
             accumulator += Raylib.GetFrameTime();
 
             // Step game logic once per accumulated game frame
