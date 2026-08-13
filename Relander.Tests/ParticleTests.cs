@@ -533,6 +533,42 @@ public class ParticleTests
     }
 
     [Test]
+    public void Rock_HittingGround_BouncesInsteadOfExploding()
+    {
+        // The original sets bits 17-23 on rock particles
+        // (Lander.arm:4198: ORR R7, R7, #&00FE0000). Bit 24 (explode) is NOT
+        // included — despite the source comment claiming it — so rocks bounce
+        // on landing until their 170-frame life expires instead of exploding.
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        // Spawn a rock well below the terrain surface, away from the launchpad:
+        // even a maximal upward random velocity keeps it underground on the
+        // first update, so the ground-contact path is exercised regardless of
+        // the PRNG draw.
+        int x = 10 * FixedPoint.TILE_SIZE;
+        int z = 10 * FixedPoint.TILE_SIZE;
+        int terrainAlt = landscape.GetAltitude(x, z);
+        particles.DropRock(x, terrainAlt + 4 * FixedPoint.TILE_SIZE, z);
+
+        Assert.That(particles.Count, Is.EqualTo(1), "Precondition: one rock");
+        particles.UpdateAndDraw();
+
+        Assert.That(particles.Count, Is.EqualTo(1),
+            "Rock should bounce on ground contact, not explode into debris");
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);

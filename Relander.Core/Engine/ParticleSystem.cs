@@ -386,7 +386,11 @@ public class ParticleSystem
         int b = (int)(((uint)rand0 >> 30) + 4);
 
         byte color = VidcColour.Encode(r, g, b);
-        int flags = FLAG_ROCK | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY | FLAG_DESTROY | FLAG_BIG_SPLASH | FLAG_EXPLODE | color;
+        // Bits 17-23 exactly (Lander.arm:4198: ORR R7, R7, #&00FE0000). The ARM
+        // source comment claims bit 24 (explode) is set too, but &00FE0000 does
+        // not include it — rocks bounce on landing until their 170-frame life
+        // expires; they do not explode on impact.
+        int flags = FLAG_ROCK | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY | FLAG_DESTROY | FLAG_BIG_SPLASH | color;
 
         // velocityShift = 12 (smaller horizontal drift) so rock falls straight down in front of camera view
         return AddMovingParticle(x, y, z, 0, 0, 0, 170, flags, 12, 27);
