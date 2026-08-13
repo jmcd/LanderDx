@@ -390,6 +390,13 @@ public class GameEngine
         var screenBuf = _screen.GetFramebuffer();
         int stride = _screen.Width;
 
+        // 0. Title on text row 0 (Lander.arm:12157-12161, 12191-12195): the
+        // original prints it to both banks at entry and it remains for the
+        // whole game.
+        SystemFont.DrawString(screenBuf, stride, 0, 0,
+            "Lander Demo/Practice (C) D.J.Braben 1987",
+            VidcColour.Encode(15, 15, 15));
+
         // 1. Fuel level bar at the top of the play area: screen rows 17-19
         // (Lander.arm:5884-5954: screenAddr points 16 rows down past the two
         // text rows, and the bar rows are drawn at +320, +2*320, +3*320), in

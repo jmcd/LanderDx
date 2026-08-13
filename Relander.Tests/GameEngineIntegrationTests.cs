@@ -379,6 +379,29 @@ public class GameEngineIntegrationTests
 
 
     [Test]
+    public void TitleLine_IsOnTextRow0()
+    {
+        // The original prints "Lander Demo/Practice (C) D.J.Braben 1987" to
+        // text row 0 of both banks at entry, where it remains for the whole
+        // game (Lander.arm:12157-12161, 12191-12195). The port had a blank
+        // row 0.
+        var random = new Relander.Core.Engine.RandomGenerator(36);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+        engine.Update(new TestInput());
+
+        var fb = screen.GetFramebuffer();
+        int row0Pixels = 0;
+        for (int x = 0; x < 320; x++)
+            if (fb[x] != 0)  // y = 0
+                row0Pixels++;
+
+        Assert.That(row0Pixels, Is.GreaterThan(10),
+            $"Title must render on row 0 (found {row0Pixels} non-zero pixels)");
+    }
+
+    [Test]
     public void FuelBar_IsAtTopOfPlayArea_InRomColour()
     {
         // The original's fuel bar sits at the top of the play area — screen
