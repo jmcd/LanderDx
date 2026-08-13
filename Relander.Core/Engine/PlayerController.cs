@@ -83,9 +83,24 @@ public class PlayerController
 
     public void ComputeRotationMatrix()
     {
-        int a = _state.ShipPitch;  // Pitch angle
-        int b = _state.ShipDirection;  // Heading angle
+        ComputeMatrix(_state, _state.ShipPitch, _state.ShipDirection);
+    }
 
+    /// <summary>
+    /// Rotation matrix for the rocks: angles derived from the main loop counter
+    /// (Lander.arm:12507-12518: R0 = mainLoopCount &lt;&lt; 24, R1 = mainLoopCount &lt;&lt; 25),
+    /// so rocks spin at a steady speed independent of the player's orientation.
+    /// Called each frame before the rocks fall, overwriting the player's matrix —
+    /// as in the original, where CalculateRotationMatrix stores to the same
+    /// workspace (static objects never read it).
+    /// </summary>
+    public void ComputeRockRotationMatrix()
+    {
+        ComputeMatrix(_state, _state.MainLoopCount << 24, _state.MainLoopCount << 25);
+    }
+
+    private static void ComputeMatrix(GameState state, int a, int b)
+    {
         // sin/cos via sine table (cos = sin at index + 256 = +90 degrees)
         int sinA = SinLookup(a);
         int cosA = SinLookup(a + 0x40000000);  // +90 degrees
@@ -97,15 +112,15 @@ public class PlayerController
         // [ yNoseV yRoofV ySideV ] = [     sinA        cosA        0  ]
         // [ zNoseV zRoofV zSideV ]   [ -cosA*sinB   sinA*sinB   cosB ]
 
-        _state.XNoseV = FixedPoint.Multiply(cosA, cosB);
-        _state.XRoofV = -FixedPoint.Multiply(sinA, cosB);
-        _state.XSideV = sinB;
-        _state.YNoseV = sinA;
-        _state.YRoofV = cosA;
-        _state.YSideV = 0;
-        _state.ZNoseV = -FixedPoint.Multiply(cosA, sinB);
-        _state.ZRoofV = FixedPoint.Multiply(sinA, sinB);
-        _state.ZSideV = cosB;
+        state.XNoseV = FixedPoint.Multiply(cosA, cosB);
+        state.XRoofV = -FixedPoint.Multiply(sinA, cosB);
+        state.XSideV = sinB;
+        state.YNoseV = sinA;
+        state.YRoofV = cosA;
+        state.YSideV = 0;
+        state.ZNoseV = -FixedPoint.Multiply(cosA, sinB);
+        state.ZRoofV = FixedPoint.Multiply(sinA, sinB);
+        state.ZSideV = cosB;
     }
 
     private static int SinLookup(int angle)

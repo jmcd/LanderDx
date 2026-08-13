@@ -121,6 +121,11 @@ public class GameEngine
                 _state.XVelocity, _state.YVelocity, _state.ZVelocity,
                 _state.XNoseV, _state.YNoseV, _state.ZNoseV);
 
+        // Rock rotation matrix from the main loop counter (Lander.arm:12507-12518):
+        // the original overwrites the shared matrix with rock-spin angles here,
+        // after the ship has been drawn and before the rocks are
+        _player.ComputeRockRotationMatrix();
+
         // 4. Random rock dropping if score >= 800 (Lander.arm:4570-4630)
         if (_state.PlayingGame != 0)
             DropRocksFromTheSky();
@@ -200,8 +205,10 @@ public class GameEngine
         if (r0 < scoreDelta)
         {
             int x = _state.XCamera;
-            // Spawn 10 tiles above player altitude so falling rocks are immediately visible in camera view
-            int y = _state.YPlayer - FixedPoint.TILE_SIZE * 10;
+            // Fixed world altitude very high in the sky: ~ROCK_HEIGHT, i.e.
+            // -(ROCK_HEIGHT + 1) = -(32 tiles + 1) (Lander.arm:4612-4620:
+            // MVN R1, #ROCK_HEIGHT) — not relative to the player's altitude
+            int y = ~FixedPoint.ROCK_HEIGHT;
             int z = _state.ZCamera - FixedPoint.PLAYER_FRONT_Z;
 
             _particles.DropRock(x, y, z);

@@ -931,6 +931,34 @@ public class ParticleTests
     }
 
     [Test]
+    public void DropRock_VelocityJitter_MatchesOriginalShift()
+    {
+        // DropARockFromTheSky passes R8 = 10 to AddStaticParticleToBuffer
+        // (Lander.arm:4216-4218), giving horizontal drift jitter of +/-&400000
+        // on the first update. The previous shift 12 gave 4x less drift.
+        var state = new GameState();
+        state.Initialize();
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        particles.DropRock(0, -(FixedPoint.ROCK_HEIGHT + 1), 0);
+        var rock = particles.GetParticle(0);
+        Assert.That(rock.Flags & ParticleSystem.FLAG_ROCK, Is.Not.EqualTo(0));
+        Assert.That(
+            global::System.Math.Abs((long)rock.VX) <= 0x400000
+            && global::System.Math.Abs((long)rock.VY) <= 0x400000
+            && global::System.Math.Abs((long)rock.VZ) <= 0x400000,
+            Is.True, "Velocity jitter at shift 10 (+/-&400000)");
+        Assert.That(
+            global::System.Math.Abs((long)rock.VX) > 0x80000
+            || global::System.Math.Abs((long)rock.VZ) > 0x80000,
+            Is.True, "Some drift must exceed the old shift-12 maximum (+/-&80000)");
+    }
+
+    [Test]
     public void PlayerCrash_Triggers30FrameExplosionSequence()
     {
         var random = new RandomGenerator(42);

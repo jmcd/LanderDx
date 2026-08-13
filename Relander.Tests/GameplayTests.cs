@@ -478,6 +478,35 @@ public class GameplayTests
     // ---- Rock dropping tests ----
 
     [Test]
+    public void RockRotationMatrix_ComesFromMainLoopCounter()
+    {
+        // Lander.arm:12507-12518: after the ship is drawn, the main loop
+        // overwrites the shared rotation matrix with angles derived from
+        // mainLoopCount (<< 24 and << 25) so rocks spin at a steady speed
+        // independent of the player. The ship's angles are unchanged between
+        // frames, so the matrix changing proves the counter drives it.
+        var random = new RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        engine.Update(new TestInput());
+        int xNoseVFrame1 = engine.State.XNoseV;
+        int zSideVFrame1 = engine.State.ZSideV;
+
+        engine.Update(new TestInput());
+        int xNoseVFrame2 = engine.State.XNoseV;
+        int zSideVFrame2 = engine.State.ZSideV;
+
+        Assert.That(engine.State.ShipPitch, Is.EqualTo(0), "Ship orientation unchanged");
+        Assert.That(engine.State.ShipDirection, Is.EqualTo(0), "Ship orientation unchanged");
+        Assert.That(xNoseVFrame2, Is.Not.EqualTo(xNoseVFrame1),
+            "The rotation matrix must change with the main loop counter (rock spin)");
+        Assert.That(zSideVFrame2, Is.Not.EqualTo(zSideVFrame1),
+            "The rotation matrix must change with the main loop counter (rock spin)");
+    }
+
+    [Test]
     public void ScoreBelow800_DoesNotSpawnRocks()
     {
         var random = new RandomGenerator(42);

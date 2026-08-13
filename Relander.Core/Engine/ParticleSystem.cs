@@ -477,8 +477,10 @@ public class ParticleSystem
         // expires; they do not explode on impact.
         int flags = FLAG_ROCK | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY | FLAG_DESTROY | FLAG_BIG_SPLASH | color;
 
-        // velocityShift = 12 (smaller horizontal drift) so rock falls straight down in front of camera view
-        return AddMovingParticle(x, y, z, 0, 0, 0, 170, flags, 12, 27);
+        // Velocity jitter shift 10 (+/-&400000) as in the original
+        // (Lander.arm:4216-4218: MOV R8, #10) — the previous shift 12 gave rocks
+        // 4x less horizontal drift.
+        return AddMovingParticle(x, y, z, 0, 0, 0, 170, flags, 10, 27);
     }
 }
 
