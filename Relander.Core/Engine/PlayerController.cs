@@ -139,9 +139,16 @@ public class PlayerController
 
         int burnRate = _state.FuelBurnRate;
 
-        // Cut engines above highest altitude
+        // Cut engines above highest altitude and persist the cut rate so the
+        // exhaust gate sees it (Lander.arm:1904-1907: STRLTB R9, [R11, #fuelBurnRate]).
+        // The previous code only cleared a local copy, so the exhaust plume kept
+        // spawning every frame above the ceiling while the physics correctly
+        // ignored the thrust.
         if (-y > FixedPoint.HIGHEST_ALTITUDE)
+        {
             burnRate &= ~6;  // Clear hover and thrust bits
+            _state.FuelBurnRate = burnRate;
+        }
 
         // Friction: velocity -= velocity / 64
         vx -= vx >> FixedPoint.FRICTION_SHIFT;

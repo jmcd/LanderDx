@@ -134,6 +134,28 @@ public class GameEngineIntegrationTests
     }
 
     [Test]
+    public void Engine_ThrustAboveAltitudeCeiling_CutsEnginesAndExhaust()
+    {
+        // Above the ceiling the original clears the hover/thrust bits and stores
+        // the result back to fuelBurnRate (Lander.arm:1904-1907: STRLTB), so the
+        // exhaust gate (fuelBurnRate & 6) also closes and no plume is drawn.
+        var random = new Relander.Core.Engine.RandomGenerator(31);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        // Fly high: -y exceeds HIGHEST_ALTITUDE (52 tiles)
+        engine.State.YPlayer = -(FixedPoint.HIGHEST_ALTITUDE + FixedPoint.TILE_SIZE);
+        engine.State.XPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE;
+        engine.State.ZPlayer = FixedPoint.LAUNCHPAD_SIZE + FixedPoint.TILE_SIZE;
+
+        engine.Update(new TestInput { Thrust = true });
+
+        Assert.That(engine.State.FuelBurnRate & 6, Is.EqualTo(0),
+            "Hover and thrust bits must be cleared (and persisted) above the altitude ceiling");
+    }
+
+    [Test]
     public void Engine_FuelDecreases_WhenThrustingOffLaunchpad()
     {
         var random = new Relander.Core.Engine.RandomGenerator(3);
