@@ -219,38 +219,35 @@ public class PlayerController
         // (terrainAlt is Y coord of ground surface; UNDERCARRIAGE_Y is the ship half-height)
         int groundContact = terrainAlt - FixedPoint.UNDERCARRIAGE_Y;
 
-        // --- Launchpad zone ---
-        if ((uint)x < FixedPoint.LAUNCHPAD_SIZE && (uint)z < FixedPoint.LAUNCHPAD_SIZE)
+        // Landing and crash checks only run once the ship has descended below the
+        // contact altitude (Lander.arm:2167-2168: CMP R1, R0 / BLGT LandOnLaunchpad).
+        // The original never consults the launchpad at higher altitudes, so flying
+        // high over the pad neither lands the ship nor crashes it.
+        if (y > groundContact)
         {
-            int totalSpeed = global::System.Math.Abs(vx) + global::System.Math.Abs(vy) + global::System.Math.Abs(vz);
-            bool slowEnough = (uint)totalSpeed < FixedPoint.LANDING_SPEED;
-            bool atPadSurface = y >= FixedPoint.LAUNCHPAD_Y;
-
-            if (atPadSurface)
+            if ((uint)x < FixedPoint.LAUNCHPAD_SIZE && (uint)z < FixedPoint.LAUNCHPAD_SIZE)
             {
-                if (slowEnough)
-                {
-                    // Safe landing — snap to pad and refuel
-                    _state.YPlayer = FixedPoint.LAUNCHPAD_Y;
-                    _state.XVelocity = 0;
-                    _state.YVelocity = 0;
-                    _state.ZVelocity = 0;
-                    _state.FuelLevel = global::System.Math.Min(FixedPoint.MAX_FUEL_LEVEL,
-                        _state.FuelLevel + FixedPoint.FUEL_REFUEL_RATE);
+                int totalSpeed = global::System.Math.Abs(vx) + global::System.Math.Abs(vy) + global::System.Math.Abs(vz);
+
+                // Too fast to land: the original returns without landing or crashing
+                // (Lander.arm:2526-2532: CMP R3, #LANDING_SPEED / MOVHS PC, R14) — a
+                // fast low pass over the pad flies on, and the vertex/shadow test
+                // decides whether it crashes.
+                if ((uint)totalSpeed >= FixedPoint.LANDING_SPEED)
                     return true;
-                }
-                else
-                {
-                    // Hit the pad too fast — crash
-                    return false;
-                }
+
+                // Safe landing — snap to pad and refuel
+                _state.YPlayer = FixedPoint.LAUNCHPAD_Y;
+                _state.XVelocity = 0;
+                _state.YVelocity = 0;
+                _state.ZVelocity = 0;
+                _state.FuelLevel = global::System.Math.Min(FixedPoint.MAX_FUEL_LEVEL,
+                    _state.FuelLevel + FixedPoint.FUEL_REFUEL_RATE);
+                return true;
             }
-        }
-        else
-        {
-            // Off the launchpad: crash if undercarriage has reached or passed terrain
-            if (y >= groundContact)
-                return false;
+
+            // Below the contact altitude off the pad: crash
+            return false;
         }
 
         return true;

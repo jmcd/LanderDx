@@ -105,6 +105,67 @@ public class GameplayTests
         Assert.That(state.CrashLoopCount, Is.EqualTo(30), "Crash loop should start on ground collision");
     }
 
+    [Test]
+    public void FlyingHigh_OverLaunchpad_DoesNotLandOrCrash()
+    {
+        // The original only consults the launchpad once the ship has descended below
+        // the contact altitude (Lander.arm:2167-2168: BLGT LandOnLaunchpad). Flying
+        // high over the pad must neither snap the ship onto the pad nor crash it.
+        var random = new RandomGenerator(21);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        var state = engine.State;
+        state.XPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        state.ZPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        // 5 tiles above the pad surface — far above the danger zone
+        state.YPlayer = FixedPoint.LAUNCHPAD_Y - 5 * FixedPoint.TILE_SIZE;
+        state.XVelocity = 0;
+        state.YVelocity = 0x00010000;  // slow drift
+        state.ZVelocity = 0;
+
+        int yBefore = state.YPlayer;
+        int livesBefore = state.RemainingLives;
+        bool alive = engine.Update(new TestInput());
+
+        Assert.That(alive, Is.True, "High flight over the pad must not crash");
+        Assert.That(state.CrashLoopCount, Is.EqualTo(0), "No crash loop at altitude");
+        Assert.That(state.RemainingLives, Is.EqualTo(livesBefore));
+        Assert.That(state.YPlayer, Is.Not.EqualTo(FixedPoint.LAUNCHPAD_Y),
+            "Ship must not be teleport-landed onto the pad from altitude");
+        Assert.That(state.YPlayer, Is.EqualTo(yBefore + 0x00010000 - (0x00010000 >> 6)),
+            "Ship should keep descending normally (drift minus friction)");
+    }
+
+    [Test]
+    public void FastLowPass_OverLaunchpad_FliesOnWithoutCrash()
+    {
+        // A fast skim over the pad inside the danger zone: the original's
+        // LandOnLaunchpad returns without landing or crashing when the speed is
+        // too high (Lander.arm:2526-2532: CMP R3, #LANDING_SPEED / MOVHS PC, R14).
+        var random = new RandomGenerator(22);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        var state = engine.State;
+        state.XPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        state.ZPlayer = FixedPoint.LAUNCHPAD_SIZE / 2;
+        state.YPlayer = FixedPoint.LAUNCHPAD_Y - 0x00040000;  // just above the pad
+        state.XVelocity = 0;
+        state.YVelocity = FixedPoint.LANDING_SPEED;  // too fast to land
+        state.ZVelocity = 0;
+
+        bool alive = engine.Update(new TestInput());
+
+        Assert.That(alive, Is.True, "Fast pass over the pad must not crash mid-air");
+        Assert.That(state.CrashLoopCount, Is.EqualTo(0),
+            "No crash: the vertex/shadow test is the arbiter for fast low passes");
+        Assert.That(state.YPlayer, Is.Not.EqualTo(FixedPoint.LAUNCHPAD_Y),
+            "Too fast to land — ship must not snap to the pad");
+    }
+
     // ---- Launchpad refuelling ----
 
     [Test]
@@ -214,16 +275,17 @@ public class GameplayTests
 
         int scoreBefore = state.CurrentScore;
 
-        // Spawn a bullet at the object's position with no velocity (it's already there)
+        // Spawn a bullet within SAFE_HEIGHT of the ground at the object's tile with
+        // no velocity (the destruction check runs on the frame the particle is in
+        // the 1.5-tile zone above the ground — Lander.arm:3292-3302)
         int bulletFlags = ParticleSystem.FLAG_DESTROY | ParticleSystem.FLAG_GRAVITY |
                           VidcColour.Encode(15, 15, 15);
-        particles.AddParticle(targetX, landscape.GetAltitude(targetX, targetZ) - 1, targetZ,
-            0, 0x00010000, 0,  // tiny downward velocity so it reaches terrain
-            5, bulletFlags);
+        particles.AddParticle(targetX,
+            landscape.GetAltitude(targetX, targetZ) - FixedPoint.SAFE_HEIGHT / 2, targetZ,
+            0, 0, 0, 5, bulletFlags);
 
-        // Run enough frames for the bullet to travel to terrain altitude
-        for (int i = 0; i < 5; i++)
-            particles.UpdateAndDraw();
+        // One frame: the bullet is within SAFE_HEIGHT of the ground and destroys the object
+        particles.UpdateAndDraw();
 
         // After collision with the live object, score should be +20 and object destroyed
         int scoreAfter = state.CurrentScore;
