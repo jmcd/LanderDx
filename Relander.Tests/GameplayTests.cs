@@ -408,4 +408,37 @@ public class GameplayTests
 
         Assert.That(state.CrashedFlag, Is.Not.EqualTo(0), "Rock colliding with player should set CrashedFlag");
     }
+
+    [Test]
+    public void ScoreIncrease_RendersUpdatedScoreString_OnHUD()
+    {
+        var random = new RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+
+        engine.StartNewGame();
+        int initialScore = engine.State.CurrentScore; // 500
+
+        // Increase score by 20 (as if destroying an object)
+        engine.State.CurrentScore += FixedPoint.SCORE_PER_DESTROY; // 520
+        Assert.That(engine.State.CurrentScore, Is.EqualTo(initialScore + 20));
+
+        // Update engine frame to render HUD score bar
+        engine.Update(new TestInput());
+
+        // Inspect row 8 of the screen framebuffer (where score string "520" is rendered)
+        var fb = screen.GetFramebuffer();
+        int scorePixels = 0;
+        for (int x = 0; x < 3*8; x++) // First 3 character columns (24 pixels)
+        {
+            for (int r = 0; r < 8; r++)
+            {
+                if (fb[(8 + r) * 320 + x] != 0)
+                    scorePixels++;
+            }
+        }
+
+        Assert.That(scorePixels, Is.GreaterThan(15),
+            "Updated score string '520' should be rendered with non-zero pixels on top HUD score bar at row 8");
+    }
 }

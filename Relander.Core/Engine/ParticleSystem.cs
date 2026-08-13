@@ -142,6 +142,8 @@ public class ParticleSystem
                         _objectMap.SetObjectAt(x, z, (byte)(objType + 12));
                         _state.CurrentScore += FixedPoint.SCORE_PER_DESTROY;
                         AddSmallExplosion(x, y, z);
+                        DeleteParticle(idx);
+                        continue;
                     }
                 }
             }
