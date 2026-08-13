@@ -400,6 +400,61 @@ public class RenderingTests
 
 
     [Test]
+    public void FaceShading_IsNotClampedToThree()
+    {
+        // The original's brightness is (0x80000000 - ny) >> 28 + (nx < 0) - 5
+        // with only a lower clamp (Lander.arm:5510-5533: SUBS R1, R1, #5 /
+        // MOVMI R1, #0). The gazebo roof normal is 107 tiles up, giving
+        // brightness 9: with face colour &400 the roof renders red=13 in the
+        // original. A clamp at 3 renders red=7 instead — the port's most
+        // visible fidelity break.
+        var state = new GameState();
+        state.Initialize();
+        state.XCamera = 0;
+        state.YCamera = 0;
+        state.ZCamera = 0;
+
+        var landscape = new LandscapeGenerator(state);
+        var buffers = new GraphicsBuffers();
+
+        ObjectRenderer.DrawObject(ObjectBlueprints.Gazebo, 0, 0,
+            FixedPoint.LANDSCAPE_Z_MID, 0, 0, state, buffers, landscape);
+        buffers.AddTerminators();
+
+        // The roof face points straight up
+        var roof = ObjectBlueprints.Gazebo.Faces
+            .OrderBy(f => f.Normal.Y).First();
+        Assert.That(roof.Normal.Y, Is.LessThan(0), "Roof normal should point up");
+
+        int expectedShade = (int)((0x80000000u - (uint)roof.Normal.Y) >> 28)
+            + (roof.Normal.X < 0 ? 1 : 0) - 5;
+        int expectedR = global::System.Math.Min(((roof.Colour >> 8) & 0xF) + expectedShade, 15);
+        Assert.That(expectedR, Is.GreaterThan(7),
+            "Precondition: the roof's true brightness must exceed the old clamp");
+
+        // Find a drawn triangle with the roof's expected red channel
+        bool foundBrightRed = false;
+        for (int b = 0; b < buffers.BufferCount; b++)
+        {
+            var data = buffers.GetBufferData(b);
+            for (int i = 0; i < data.Length; i += 8)
+            {
+                if (data[i] != GraphicsBuffers.COMMAND_TRIANGLE) break;
+                byte vidc = (byte)(data[i + 7] & 0xFF);
+                var (r8, _, _) = VidcColour.DecodeToRgb24(vidc);
+                if (r8 / 17 == expectedR)
+                {
+                    foundBrightRed = true;
+                    break;
+                }
+            }
+        }
+
+        Assert.That(foundBrightRed, Is.True,
+            $"Roof must render at red={expectedR} (shade {expectedShade}), not clamped at 7");
+    }
+
+    [Test]
     public void RotatingObject_Culling_HandlesLargeCoordinates()
     {
         // Back-face culling must use the exact 64-bit dot product sign: with

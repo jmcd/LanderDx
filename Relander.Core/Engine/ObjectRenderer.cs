@@ -76,7 +76,6 @@ public static class ObjectRenderer
             int shade = (int)((0x80000000u - (uint)ny) >> 28);
             if (nx < 0) shade++;
             shade = global::System.Math.Max(0, shade - 5);
-            if (shade > 3) shade = 3;
             int r = global::System.Math.Min(((face.Colour >> 8) & 0xF) + shade, 15);
             int g = global::System.Math.Min(((face.Colour >> 4) & 0xF) + shade, 15);
             int b = global::System.Math.Min((face.Colour & 0xF) + shade, 15);
