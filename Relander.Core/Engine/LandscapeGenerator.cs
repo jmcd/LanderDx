@@ -101,8 +101,8 @@ public class LandscapeGenerator
         // Base colour channels from altitude bits
         // Green: bit 3 of altitude → 4 or 8
         int g = ((alt >> 3) & 1) * 4 + 4;
-        // Red: bit 2 of altitude → 0 or 4
-        int r = (alt >> 2) & 4;
+        // Red: bit 2 of altitude → 0 or 4 (Lander.arm:1608: AND R0, R4, #%00000100)
+        int r = alt & 4;
         int b = 0;  // Blue only for sea
 
         // Launchpad → grey

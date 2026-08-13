@@ -128,4 +128,31 @@ public class LandscapeTests
         Assert.That(brightFront, Is.GreaterThanOrEqualTo(brightBack),
             $"Front row ({brightFront}) should not be darker than back row ({brightBack})");
     }
+
+
+    [Test]
+    public void TileColour_RedChannel_ComesFromAltitudeBit2()
+    {
+        // The original takes the red channel from bit 2 of the altitude:
+        // AND R0, R4, #%00000100 (Lander.arm:1608). Altitude bit 2 set -> red 4,
+        // bit 4 set -> no red contribution. (A previous version read bit 4.)
+        _state.Altitude = 0x00000004;   // bit 2 set
+        _state.PrevAltitude = 0x00000004;
+        int colourBit2 = _gen.GetTileColour(1) & 0xFF;
+
+        _state.Altitude = 0x00000010;   // bit 4 set
+        _state.PrevAltitude = 0x00000010;
+        int colourBit4 = _gen.GetTileColour(1) & 0xFF;
+
+        // Brightness is tileCornerRow(1) + slope(0) = 1 on all channels, so:
+        // bit 2 -> r = 4 + 1 = 5, g = 4 + 1 = 5, b = 0 + 1 = 1
+        // bit 4 -> r = 0 + 1 = 1, g = 4 + 1 = 5, b = 0 + 1 = 1
+        Assert.That(colourBit2, Is.EqualTo(VidcColour.Encode(5, 5, 1)),
+            "Altitude bit 2 should contribute red (r=5)");
+        Assert.That(colourBit4, Is.EqualTo(VidcColour.Encode(1, 5, 1)),
+            "Altitude bit 4 should not contribute red (r=1)");
+        Assert.That(colourBit2, Is.Not.EqualTo(colourBit4),
+            "Bit 2 and bit 4 altitudes must produce different colours");
+    }
+
 }
