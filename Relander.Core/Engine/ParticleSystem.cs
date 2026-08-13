@@ -157,6 +157,18 @@ public class ParticleSystem
                         if ((flags & FLAG_ROCK) == 0)
                             _state.CurrentScore += FixedPoint.SCORE_PER_DESTROY;
                         MinimapRenderer.InvalidateCache();
+                        // Medium explosion at the particle's position
+                        // (Lander.arm:3357-3359: MOV R8, #20 / BL AddExplosionToBuffer)
+                        AddExplosion(x, y, z, FixedPoint.DESTROY_EXPLOSION_CLUSTERS);
+                        DeleteParticle(idx);
+                        continue;
+                    }
+                    else if (ObjectTypes.IsSmokingObject(objType))
+                    {
+                        // Already destroyed: small explosion and the particle is
+                        // destroyed in it (Lander.arm:3340-3345: CMP R8, #12 /
+                        // BHS AddSmallExplosionToBuffer, which tail-calls
+                        // DeleteParticleData)
                         AddSmallExplosion(x, y, z);
                         DeleteParticle(idx);
                         continue;
@@ -338,20 +350,38 @@ public class ParticleSystem
         return AddParticle(pX, pY, pZ, pVx, pVy, pVz, 20, flags);
     }
 
-    /// <summary>Add a small explosion cloud to the buffer (Lander.arm:3384-3436).</summary>
+    /// <summary>Add a small explosion cloud (Lander.arm:3384-3394: MOV R8, #3 → 4 clusters).</summary>
     public void AddSmallExplosion(int x, int y, int z)
     {
-        for (int cluster = 0; cluster < 3; cluster++)
+        AddExplosion(x, y, z, 3);
+    }
+
+    /// <summary>
+    /// Add an explosion cloud (Lander.arm:4406-4450, AddExplosionToBuffer). Each
+    /// cluster is spark, debris, smoke, spark in that order. The original's loop
+    /// (SUBS R8, R8, #1 / BPL expl1) branches while R8 >= 0, so R8 + 1 clusters
+    /// are drawn in total: the small explosion (R8 = 3) gives 4, object
+    /// destruction (R8 = 20) gives 21, and the crash explosion (R8 = 81) gives
+    /// 82 — the source comments describe one fewer in each case.
+    /// </summary>
+    public void AddExplosion(int x, int y, int z, int r8)
+    {
+        for (int cluster = 0; cluster <= r8; cluster++)
         {
-            // 2 sparks: fade|splash|bounce|gravity, life 8 + rand >> 29, velocity
-            // jitter shift 8 (+/-&1000000) — Lander.arm:4247-4267.
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
-            // 1 debris particle
+            AddSparkParticle(x, y, z);
             AddDebrisParticle(x, y, z);
-            // 1 smoke particle
             AddSmokeParticle(x, y, z);
+            AddSparkParticle(x, y, z);
         }
+    }
+
+    /// <summary>
+    /// Add a spark: fade|splash|bounce|gravity, life 8 + rand >> 29, velocity
+    /// jitter shift 8 (+/-&1000000) — Lander.arm:4247-4267.
+    /// </summary>
+    private void AddSparkParticle(int x, int y, int z)
+    {
+        AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
     }
 
     /// <summary>
@@ -408,21 +438,14 @@ public class ParticleSystem
         }
     }
 
-    /// <summary>Create a big player crash explosion cloud (Lander.arm:4389-4439, 81 clusters).</summary>
+    /// <summary>
+    /// Create the player crash explosion cloud (Lander.arm:4389-4439, R8 = 81).
+    /// AddExplosion draws R8 + 1 clusters (the BPL loop includes R8 = 0), so
+    /// this produces 82 clusters, as in the original.
+    /// </summary>
     public void AddBigExplosion(int x, int y, int z, int clusters = 81)
     {
-        for (int cluster = 0; cluster < clusters; cluster++)
-        {
-            // 2 sparks: fade|splash|bounce|gravity, life 8 + rand >> 29 (the
-            // original's range 0..8, Lander.arm:4261-4263 — the previous shift
-            // 28 let sparks live 8 frames longer), velocity jitter shift 8.
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
-            AddMovingParticle(x, y, z, 0, 0, 0, 8, FLAG_FADE | FLAG_SPLASH | FLAG_BOUNCE | FLAG_GRAVITY, 8, 29);
-            // 1 debris particle
-            AddDebrisParticle(x, y, z);
-            // 1 smoke particle
-            AddSmokeParticle(x, y, z);
-        }
+        AddExplosion(x, y, z, clusters);
     }
 
     /// <summary>

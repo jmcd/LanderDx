@@ -583,10 +583,11 @@ public class ParticleTests
         var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
 
         particles.AddSmallExplosion(0, 0, 0);
-        Assert.That(particles.Count, Is.EqualTo(12), "3 clusters x 4 particles");
+        Assert.That(particles.Count, Is.EqualTo(16),
+            "Small explosion: R8 = 3 runs the BPL loop 4 times = 4 clusters x 4 particles");
 
-        // Smoke particles are the 4th of each cluster
-        for (int idx = 3; idx < particles.Count; idx += 4)
+        // Smoke particles are the 3rd of each cluster (spark, debris, smoke, spark)
+        for (int idx = 2; idx < particles.Count; idx += 4)
         {
             var p = particles.GetParticle(idx);
             Assert.That(p.Flags & ParticleSystem.FLAG_BOUNCE, Is.Not.EqualTo(0),
@@ -727,6 +728,77 @@ public class ParticleTests
                 Is.True, "Velocity jitter at shift 10 (+/-&400000)");
         }
         Assert.That(debrisChecked, Is.GreaterThan(0), "Should find debris particles");
+    }
+
+    [Test]
+    public void DestroyingObject_Spawns21ClusterExplosion()
+    {
+        // AddExplosionToBuffer loops SUBS R8, R8, #1 / BPL (Lander.arm:4406-4450),
+        // which includes R8 = 0 — so the destruction's R8 = 20 draws 21 clusters
+        // of 4 particles = 84 particles, not 20 clusters.
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(42);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        objectMap.SetObjectAt(objX, objZ, 1);
+        int groundAlt = landscape.GetAltitude(objX, objZ);
+
+        particles.AddParticle(objX, groundAlt - FixedPoint.SAFE_HEIGHT / 2, objZ,
+            0, 0, 0, 20, ParticleSystem.FLAG_DESTROY);
+        particles.UpdateAndDraw();
+
+        Assert.That(objectMap.GetObjectAt(objX, objZ), Is.EqualTo(13));
+        Assert.That(particles.Count, Is.EqualTo(84),
+            "Destruction explosion = (R8 = 20) + 1 = 21 clusters x 4 particles");
+    }
+
+    [Test]
+    public void HittingSmokingRemains_SpawnsSmallExplosionAndDeletesBullet()
+    {
+        // A particle hitting an already-destroyed object (map entry >= 12) makes
+        // a small explosion and is deleted (Lander.arm:3340-3345:
+        // CMP R8, #12 / BHS AddSmallExplosionToBuffer, which tail-calls
+        // DeleteParticleData). Small explosion = R8 = 3 → 4 clusters x 4 = 16.
+        var state = new GameState();
+        state.Initialize();
+        state.PlaceOnLaunchpad();
+        state.XCamera = state.XPlayer;
+        state.YCamera = 0;
+        state.ZCamera = state.ZPlayer + FixedPoint.CAMERA_PLAYER_Z;
+
+        var random = new RandomGenerator(43);
+        var landscape = new LandscapeGenerator(state);
+        var objectMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objectMap, buffers, random);
+
+        int objX = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        int objZ = 10 * FixedPoint.TILE_SIZE + FixedPoint.TILE_SIZE / 2;
+        objectMap.SetObjectAt(objX, objZ, 13);  // smoking remains
+        int groundAlt = landscape.GetAltitude(objX, objZ);
+        int scoreBefore = state.CurrentScore;
+
+        particles.AddParticle(objX, groundAlt - FixedPoint.SAFE_HEIGHT / 2, objZ,
+            0, 0, 0, 20, ParticleSystem.FLAG_DESTROY);
+        particles.UpdateAndDraw();
+
+        Assert.That(particles.Count, Is.EqualTo(16),
+            "Small explosion = 4 clusters x 4 particles; the bullet is consumed");
+        Assert.That(state.CurrentScore, Is.EqualTo(scoreBefore),
+            "No score for hitting smoking remains");
+        Assert.That(objectMap.GetObjectAt(objX, objZ), Is.EqualTo(13),
+            "Smoking remains stay smoking remains");
     }
 
     [Test]
