@@ -320,21 +320,76 @@ public class RenderingTests
         public byte GetPlayPixel(int x, int y) => _fb[(y + 16) * 320 + x];
     }
 
-    private class TestInput : Relander.Core.Interfaces.IGameInput
+    [Test]
+    public void MinimapRenderer_RenderInset_DrawsRadarBoxInTopRight()
     {
-        public bool Thrust => false;
-        public bool Hover => false;
-        public bool Left => false;
-        public bool Right => false;
-        public bool Up => false;
-        public bool Down => false;
-        public bool Fire => false;
-        public bool EscapePressed => false;
-        public bool Reverse => false;
-        public bool YawLeft => false;
-        public bool YawRight => false;
-        public bool PitchUp => false;
-        public bool PitchDown => false;
+        MinimapRenderer.InvalidateCache();
+        var state = new GameState();
+        state.Initialize();
+        state.MapMode = 0; // Inset Mini-Map Mode
+
+        var landscape = new LandscapeGenerator(state);
+        var random = new RandomGenerator(42);
+        var objMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objMap, buffers, random);
+
+        byte[] fb = new byte[320 * 256];
+        MinimapRenderer.Render(fb, 320, state, landscape, objMap, particles);
+
+        byte borderPixel = fb[15 * 320 + 251]; // Top-left corner of border frame (x=251, y=15)
+        Assert.That(borderPixel, Is.EqualTo(VidcColour.Encode(15, 15, 15)),
+            "Minimap border pixel should be rendered in top-right corner");
+
+        // Verify center map pixel inside inset at x=280, y=48
+        byte mapPixel = fb[48 * 320 + 280];
+        Assert.That(mapPixel, Is.Not.EqualTo(0),
+            "Minimap interior pixel should contain downsampled terrain color");
+    }
+
+    [Test]
+    public void MinimapRenderer_RenderFull_Draws256MapOverlay()
+    {
+        var state = new GameState();
+        state.Initialize();
+        state.MapMode = 1; // Full 256x256 Overlay Mode
+
+        var landscape = new LandscapeGenerator(state);
+        var random = new RandomGenerator(42);
+        var objMap = new ObjectMap(landscape, random);
+        var buffers = new GraphicsBuffers();
+        var particles = new ParticleSystem(state, landscape, objMap, buffers, random);
+
+        byte[] fb = new byte[320 * 256];
+        MinimapRenderer.Render(fb, 320, state, landscape, objMap, particles);
+
+        // Center map starts at x=32, spans 256 pixels
+        byte mapPixel = fb[100 * 320 + (32 + 100)];
+        Assert.That(mapPixel, Is.Not.EqualTo(0),
+            "Full 256x256 map overlay pixel should contain 1px-per-tile terrain color");
+    }
+
+    [Test]
+    public void GameEngine_ToggleMapInput_CyclesMapModes()
+    {
+        var random = new RandomGenerator(42);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+
+        engine.StartNewGame();
+        Assert.That(engine.State.MapMode, Is.EqualTo(0), "Default MapMode should be 0 (Inset Mini-Map)");
+
+        // Press Tab key (ToggleMap)
+        engine.Update(new TestInput { ToggleMap = true });
+        Assert.That(engine.State.MapMode, Is.EqualTo(1), "Pressing ToggleMap should switch to Mode 1 (Full Map)");
+
+        // Press Tab key again
+        engine.Update(new TestInput { ToggleMap = true });
+        Assert.That(engine.State.MapMode, Is.EqualTo(2), "Pressing ToggleMap should switch to Mode 2 (Hidden)");
+
+        // Press Tab key again
+        engine.Update(new TestInput { ToggleMap = true });
+        Assert.That(engine.State.MapMode, Is.EqualTo(0), "Pressing ToggleMap should wrap back to Mode 0");
     }
 }
 

@@ -62,6 +62,7 @@ public class GameState
     public int Gravity;
     public int RemainingLives;
     public int HighScore;
+    public int MapMode; // 0 = Inset Mini-Map, 1 = Full 256x256 Overlay, 2 = Hidden
 
     // ---- Camera ----
     public int XCamera, YCamera, ZCamera;

@@ -218,18 +218,6 @@ public class ShadingDiagnosticTests
             $"Expected rocket colour VIDC 0x{expectedVidc:X2} not found in bounding box");
     }
 
-    private class TestInput : Relander.Core.Interfaces.IGameInput
-    {
-        public bool YawLeft { get; set; }
-        public bool YawRight { get; set; }
-        public bool PitchUp { get; set; }
-        public bool PitchDown { get; set; }
-        public bool Fire { get; set; }
-        public bool Thrust { get; set; }
-        public bool Hover { get; set; }
-        public bool EscapePressed { get; set; }
-    }
-
     private class TestScreen : Relander.Core.Interfaces.IScreen
     {
         private readonly byte[] _fb = new byte[320 * 256];

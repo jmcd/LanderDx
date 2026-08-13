@@ -12,5 +12,6 @@ public class RaylibInput : IGameInput
     public bool Fire => Raylib.IsKeyDown(KeyboardKey.N);
     public bool Thrust => Raylib.IsKeyDown(KeyboardKey.M);
     public bool Hover => Raylib.IsKeyDown(KeyboardKey.H);
+    public bool ToggleMap => Raylib.IsKeyPressed(KeyboardKey.Tab) || Raylib.IsKeyPressed(KeyboardKey.R);
     public bool EscapePressed => Raylib.IsKeyDown(KeyboardKey.Escape);
 }

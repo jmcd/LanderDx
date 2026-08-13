@@ -27,6 +27,9 @@ public interface IGameInput
     /// <summary>Hover (key H).</summary>
     bool Hover { get; }
 
+    /// <summary>Toggle mini-map radar view (key Tab).</summary>
+    bool ToggleMap { get; }
+
     /// <summary>Escape key: quit game.</summary>
     bool EscapePressed { get; }
 }

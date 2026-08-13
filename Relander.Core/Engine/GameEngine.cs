@@ -88,13 +88,18 @@ public class GameEngine
             return true;
         }
 
+        // Map mode toggle (TAB or R key)
+        if (input.ToggleMap)
+        {
+            _state.MapMode = (_state.MapMode + 1) % 3;
+        }
+
         // 1. Player update (input → physics → collision → draw ship into buffers)
         if (!_player.Update(input))
         {
             TriggerCrash();
             return true;
         }
-
 
         _state.UpdateGravity();
 
@@ -120,7 +125,6 @@ public class GameEngine
         // 5. Draw objects (trees, buildings) into buffers
         DrawVisibleObjects();
 
-
         // 5. Terminate buffers
         _buffers.AddTerminators();
 
@@ -132,6 +136,10 @@ public class GameEngine
 
         // 8. Draw HUD score bar onto top 16 rows of screen buffer
         RenderScoreBar();
+
+        // 9. Render mini-map radar overlay
+        var screenBuf = _screen.GetFramebuffer();
+        MinimapRenderer.Render(screenBuf, _screen.Width, _state, _landscape, _objectMap, _particles);
 
         // 9. Clear for next frame
         _rasterizer.Clear(0);

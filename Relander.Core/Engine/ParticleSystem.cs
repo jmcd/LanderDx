@@ -141,6 +141,7 @@ public class ParticleSystem
                         // Destroy the object!
                         _objectMap.SetObjectAt(x, z, (byte)(objType + 12));
                         _state.CurrentScore += FixedPoint.SCORE_PER_DESTROY;
+                        MinimapRenderer.InvalidateCache();
                         AddSmallExplosion(x, y, z);
                         DeleteParticle(idx);
                         continue;

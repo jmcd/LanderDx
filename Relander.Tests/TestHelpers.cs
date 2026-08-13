@@ -21,6 +21,7 @@ internal class TestInput : IGameInput
     public bool Fire { get; set; }
     public bool Thrust { get; set; }
     public bool Hover { get; set; }
+    public bool ToggleMap { get; set; }
     public bool EscapePressed { get; set; }
 }
 
