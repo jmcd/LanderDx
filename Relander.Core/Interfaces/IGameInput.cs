@@ -32,4 +32,7 @@ public interface IGameInput
 
     /// <summary>Escape key: quit game.</summary>
     bool EscapePressed { get; }
+
+    /// <summary>Any key pressed — used by the game-over "press a key" wait.</summary>
+    bool AnyKeyPressed { get; }
 }

@@ -69,6 +69,22 @@ public class GameEngine
     {
         if (input.EscapePressed) return false;
 
+        // Game over: the original prints "GAME OVER - press a key to start
+        // again" to both banks and blocks in OS_ReadC until any key is pressed,
+        // then starts a brand new game (Lander.arm:2696-2744).
+        if (_state.PlayingGame == -2)
+        {
+            CopyToScreen();
+            RenderScoreBar();
+            var gameOverBuf = _screen.GetFramebuffer();
+            SystemFont.DrawString(gameOverBuf, _screen.Width, 8, 128,
+                "GAME OVER - press a key to start again",
+                VidcColour.Encode(15, 15, 15));
+            if (input.AnyKeyPressed)
+                StartNewGame();
+            return true;
+        }
+
         // Crash animation loop: 31 frames of explosion after player crash
         // (the original's SUBS/BPL loop with R8 = 30 runs the body for 30..0).
         // PlayingGame == 0 is the crash state (TriggerCrash sets it; the count
@@ -98,7 +114,7 @@ public class GameEngine
             {
                 _state.RemainingLives--;
                 if (_state.RemainingLives <= 0)
-                    StartNewGame();
+                    _state.PlayingGame = -2;  // Game over: show the message and wait for a key
                 else
                     _state.PlaceOnLaunchpad();
             }
@@ -432,13 +448,6 @@ public class GameEngine
         // Col 35 (x = 280): High score
         string highStr = _state.HighScore.ToString();
         SystemFont.DrawString(screenBuf, stride, 280, 8, highStr, white);
-
-        // 3. Game Over text message when lives <= 0 (middle of play area, y = 128)
-        if (_state.RemainingLives <= 0)
-        {
-            byte red = VidcColour.Encode(15, 0, 0);
-            SystemFont.DrawString(screenBuf, stride, 120, 128, "GAME OVER", red);
-        }
     }
 
     private void CopyToScreen()

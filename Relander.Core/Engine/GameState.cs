@@ -54,7 +54,7 @@ public class GameState
     public int MainLoopCount;
     public int CrashLoopCount;
     public int CrashedFlag;
-    public int PlayingGame; // 0 = crash animation, -1 = playing
+    public int PlayingGame; // 0 = crash animation, -1 = playing, -2 = game over (waiting for a key)
 
     // ---- Scoring ----
     public int CurrentScore;

@@ -379,6 +379,57 @@ public class GameEngineIntegrationTests
 
 
     [Test]
+    public void GameOver_ShowsMessageAndWaitsForKey()
+    {
+        // The original prints "GAME OVER - press a key to start again" at text
+        // column 1, row 16 and blocks in OS_ReadC until any key, then starts a
+        // brand new game (Lander.arm:2696-2744). The previous port restarted
+        // instantly with dead GAME OVER text.
+        var random = new Relander.Core.Engine.RandomGenerator(37);
+        var screen = new TestScreen();
+        var engine = new GameEngine(random, screen);
+        engine.StartNewGame();
+
+        // One life, ship below terrain off the pad → crash sequence
+        var state = engine.State;
+        state.RemainingLives = 1;
+        int offX = 10 * FixedPoint.TILE_SIZE;
+        int offZ = 10 * FixedPoint.TILE_SIZE;
+        state.XPlayer = offX;
+        state.ZPlayer = offZ;
+        state.YPlayer = engine.Landscape.GetAltitude(offX, offZ) + FixedPoint.TILE_SIZE;
+        state.XVelocity = 0;
+        state.YVelocity = 0;
+        state.ZVelocity = 0;
+
+        engine.Update(new TestInput());  // trigger crash
+        for (int i = 0; i < 32; i++)
+            engine.Update(new TestInput());  // run out the 31-frame crash loop
+
+        Assert.That(state.PlayingGame, Is.EqualTo(-2), "Game over state entered");
+        Assert.That(state.RemainingLives, Is.EqualTo(0));
+
+        var fb = screen.GetFramebuffer();
+        int msgPixels = 0;
+        for (int y = 128; y < 136; y++)
+            for (int x = 0; x < 320; x++)
+                if (fb[y * 320 + x] != 0)
+                    msgPixels++;
+        Assert.That(msgPixels, Is.GreaterThan(20),
+            "Game over message must be visible at row 16 (y = 128)");
+
+        // The game stays on the message until a key is pressed
+        int livesBeforeKey = state.RemainingLives;
+        engine.Update(new TestInput());
+        Assert.That(state.PlayingGame, Is.EqualTo(-2), "Still waiting without a key");
+
+        engine.Update(new TestInput { AnyKeyPressed = true });
+        Assert.That(state.PlayingGame, Is.EqualTo(-1), "A key press starts a new game");
+        Assert.That(state.RemainingLives, Is.EqualTo(FixedPoint.INITIAL_LIVES));
+        Assert.That(state.CurrentScore, Is.EqualTo(FixedPoint.INITIAL_SCORE));
+    }
+
+    [Test]
     public void TitleLine_IsOnTextRow0()
     {
         // The original prints "Lander Demo/Practice (C) D.J.Braben 1987" to

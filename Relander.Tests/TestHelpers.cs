@@ -23,6 +23,7 @@ internal class TestInput : IGameInput
     public bool Hover { get; set; }
     public bool ToggleMap { get; set; }
     public bool EscapePressed { get; set; }
+    public bool AnyKeyPressed { get; set; }
 }
 
 /// <summary>

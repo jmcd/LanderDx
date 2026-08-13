@@ -38,4 +38,13 @@ public class RaylibInput : IGameInput
     }
 
     public bool EscapePressed => Raylib.IsKeyDown(KeyboardKey.Escape);
+
+    /// <summary>
+    /// Any key: presses accumulated since the last poll (Raylib queues key-pressed
+    /// events, so a tap between 12.5 Hz game ticks is still seen), plus any held
+    /// game key.
+    /// </summary>
+    public bool AnyKeyPressed =>
+        Raylib.GetKeyPressed() != 0
+        || YawLeft || YawRight || PitchUp || PitchDown || Fire || Thrust || Hover;
 }
