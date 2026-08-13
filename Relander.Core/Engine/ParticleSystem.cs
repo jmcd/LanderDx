@@ -16,8 +16,10 @@ public class ParticleSystem
     private readonly GraphicsBuffers _buffers;
     private readonly IRandomSource _random;
 
-    // Particle data: flat array, 8 ints per particle, max 484 particles
-    private readonly int[] _data = new int[FixedPoint.MAX_PARTICLES * 8];
+    // Particle data: flat array, 8 ints per particle, max 484 particles.
+    // Sized MAX_PARTICLES+1 slots so the null terminator written after the last
+    // particle (at index MAX_PARTICLES*8) is always within bounds.
+    private readonly int[] _data = new int[(FixedPoint.MAX_PARTICLES + 1) * 8];
     private int _endIndex;  // Next write position in 8-int units
 
     // Particle field offsets (8 words = 32 bytes per particle)
