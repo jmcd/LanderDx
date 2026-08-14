@@ -53,6 +53,12 @@ public static class Program
         while (!Raylib.WindowShouldClose() && running)
         {
             input.PollEvents();
+
+            // View depth toggle (C): a presentation option handled at the
+            // display rate, between game ticks.
+            if (input.ConsumeViewDepthToggle())
+                engine.CycleViewDepth();
+
             accumulator += Raylib.GetFrameTime();
             // After a long display stall (window drag/freeze) the accumulator
             // would otherwise catch up in a burst of game ticks; clamp to one

@@ -18,17 +18,28 @@ public class GraphicsBuffers
     public const int COMMAND_TRIANGLE = 18;
     public const int COMMAND_TERMINATOR = 19;
 
-    private readonly int[][] _buffers;
-    private readonly int[] _endIndices;  // Current write position in each buffer
-    private readonly int[] _startIndices;
+    private int[][] _buffers;
+    private int[] _endIndices;  // Current write position in each buffer
+    private int[] _startIndices;
     private readonly int _bufferCapacity;
 
-    public int BufferCount { get; }
+    // Screen-depth constants for buffer selection. Defaults are the original
+    // values (Lander.arm:135-168); the extended-view option overrides them.
+    private int _landscapeZ;
+    private int _landscapeZDepth;
+    private int _landscapeZBeyond;
 
-    public GraphicsBuffers(int count = FixedPoint.GRAPHICS_BUFFER_COUNT, int capacity = FixedPoint.BUFFER_SIZE / 4)
+    public int BufferCount { get; private set; }
+
+    public GraphicsBuffers(int count = FixedPoint.GRAPHICS_BUFFER_COUNT, int capacity = FixedPoint.BUFFER_SIZE / 4,
+        int landscapeZ = FixedPoint.LANDSCAPE_Z, int landscapeZDepth = FixedPoint.LANDSCAPE_Z_DEPTH,
+        int landscapeZBeyond = FixedPoint.LANDSCAPE_Z_BEYOND)
     {
         BufferCount = count;
         _bufferCapacity = capacity;
+        _landscapeZ = landscapeZ;
+        _landscapeZDepth = landscapeZDepth;
+        _landscapeZBeyond = landscapeZBeyond;
         _buffers = new int[count][];
         _endIndices = new int[count];
         _startIndices = new int[count];
@@ -42,15 +53,39 @@ public class GraphicsBuffers
     }
 
     /// <summary>
+    /// Reconfigure buffer count and depth constants in place, keeping object
+    /// identity (other subsystems hold this instance). Must be called between
+    /// frames only — in-flight commands are dropped.
+    /// </summary>
+    public void Resize(int count, int landscapeZ, int landscapeZDepth, int landscapeZBeyond)
+    {
+        BufferCount = count;
+        _landscapeZ = landscapeZ;
+        _landscapeZDepth = landscapeZDepth;
+        _landscapeZBeyond = landscapeZBeyond;
+        _buffers = new int[count][];
+        _endIndices = new int[count];
+        _startIndices = new int[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            _buffers[i] = new int[_bufferCapacity];
+            _endIndices[i] = 0;
+            _startIndices[i] = 0;
+            _buffers[i][0] = COMMAND_TERMINATOR;  // Ensure empty read
+        }
+    }
+
+    /// <summary>
     /// Get the buffer number for a given screen-depth z-coordinate.
     /// Uses the original formula: LANDSCAPE_Z - zObject + TILE_SIZE,
     /// clamped to LANDSCAPE_Z_DEPTH if >= LANDSCAPE_Z_BEYOND.
     /// </summary>
     public int GetBufferIndex(int zObject)
     {
-        int offset = FixedPoint.LANDSCAPE_Z - zObject + FixedPoint.TILE_SIZE;
-        if ((uint)offset >= (uint)FixedPoint.LANDSCAPE_Z_BEYOND)
-            offset = FixedPoint.LANDSCAPE_Z_DEPTH;
+        int offset = _landscapeZ - zObject + FixedPoint.TILE_SIZE;
+        if ((uint)offset >= (uint)_landscapeZBeyond)
+            offset = _landscapeZDepth;
         return (int)((uint)offset >> 24) & 0xFF;
     }
 
@@ -59,9 +94,9 @@ public class GraphicsBuffers
     /// </summary>
     public int GetShadowBufferIndex(int zObject)
     {
-        int offset = FixedPoint.LANDSCAPE_Z - zObject;
-        if ((uint)offset >= (uint)FixedPoint.LANDSCAPE_Z_BEYOND)
-            offset = FixedPoint.LANDSCAPE_Z_DEPTH;
+        int offset = _landscapeZ - zObject;
+        if ((uint)offset >= (uint)_landscapeZBeyond)
+            offset = _landscapeZDepth;
         return (int)((uint)offset >> 24) & 0xFF;
     }
 

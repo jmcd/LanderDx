@@ -16,6 +16,12 @@ public class GameEngine
     private readonly IRandomSource _random;
     private readonly IScreen _screen;
 
+    private ViewConfig _viewConfig;
+    private int _viewDepthIndex;
+
+    /// <summary>View depth presets cycled by the C key (extra tile rows beyond the original grid).</summary>
+    private static readonly int[] ViewDepthPresets = { 0, 10, 20, 30 };
+
     private readonly LandscapeGenerator _landscape;
     private readonly ObjectMap _objectMap;
     private readonly PlayerController _player;
@@ -31,10 +37,38 @@ public class GameEngine
     public LandscapeGenerator Landscape => _landscape;
     public ObjectMap ObjectMap => _objectMap;
 
-    public GameEngine(IRandomSource random, IScreen screen)
+    /// <summary>Current number of extra view-depth rows (0 = original view).</summary>
+    public int ExtraDepthTiles => _viewConfig.ExtraDepthTiles;
+
+    /// <summary>
+    /// Set the extended view depth (0 = original). Must be called between
+    /// frames — it rebuilds the graphics buffers in place, dropping in-flight
+    /// commands.
+    /// </summary>
+    public void SetExtraDepth(int extraDepthTiles)
+    {
+        _viewConfig = new ViewConfig(extraDepthTiles);
+        _buffers.Resize(_viewConfig.GraphicsBufferCount,
+            _viewConfig.LandscapeZ, _viewConfig.LandscapeZDepth, _viewConfig.LandscapeZBeyond);
+    }
+
+    /// <summary>
+    /// Cycle the view depth presets: original → +10 → +20 → +30 → original
+    /// (C key, a deliberate deviation from the original — opt-in only).
+    /// </summary>
+    public void CycleViewDepth()
+    {
+        _viewDepthIndex = (_viewDepthIndex + 1) % ViewDepthPresets.Length;
+        SetExtraDepth(ViewDepthPresets[_viewDepthIndex]);
+    }
+
+    public GameEngine(IRandomSource random, IScreen screen, ViewConfig? viewConfig = null)
     {
         _state = new GameState();
-        _buffers = new GraphicsBuffers();
+        _viewConfig = viewConfig ?? new ViewConfig(0);
+        _viewDepthIndex = global::System.Math.Max(0, Array.IndexOf(ViewDepthPresets, _viewConfig.ExtraDepthTiles));
+        _buffers = new GraphicsBuffers(_viewConfig.GraphicsBufferCount, FixedPoint.BUFFER_SIZE / 4,
+            _viewConfig.LandscapeZ, _viewConfig.LandscapeZDepth, _viewConfig.LandscapeZBeyond);
         _random = random;
         _screen = screen;
 
@@ -197,7 +231,10 @@ public class GameEngine
         int camTileX = (_state.XCamera - FixedPoint.LANDSCAPE_X) & unchecked((int)0xFF000000);
         int camTileZ = _state.ZCamera & unchecked((int)0xFF000000);
 
-        for (int tz = 0; tz < FixedPoint.TILES_Z; tz++)
+        // Negative tz covers the extended far band: worldZ = camTileZ + k for
+        // k = 1..ExtraDepthTiles. The objZ formula below stays correct across
+        // the whole extended grid (projZ = worldZ - ZCamera + LANDSCAPE_Z).
+        for (int tz = -_viewConfig.ExtraDepthTiles; tz < FixedPoint.TILES_Z; tz++)
         {
             int worldZ = (camTileZ - tz * FixedPoint.TILE_SIZE) & unchecked((int)0xFF000000);
             for (int tx = 0; tx < FixedPoint.TILES_X; tx++)
@@ -259,14 +296,20 @@ public class GameEngine
         int startX = xCameraTile - FixedPoint.LANDSCAPE_X;
 
         // Starting z for the back row (LANDSCAPE_Z - fractional part of camera z)
-        // This is the z value used for PROJECTION, not the world z for altitude
-        int zRow = FixedPoint.LANDSCAPE_Z - zFrac;
+        // This is the z value used for PROJECTION, not the world z for altitude.
+        // The extended view adds ExtraDepthTiles rows at the far end: the back
+        // row moves back by N tiles and samples terrain behind the camera tile
+        // (worldZ = zCameraTile + (N - row) * TILE_SIZE). The original rows keep
+        // their exact projection z, world z and colours — projZ = worldZ -
+        // ZCamera + LANDSCAPE_Z stays linear across the whole grid.
+        int zRow = _viewConfig.LandscapeZ - zFrac;
 
-        // World z for altitude lookup (starts at camera tile z, goes down each row)
-        int worldZBase = zCameraTile;
+        // World z for altitude lookup (starts N tiles behind the camera tile,
+        // goes down one tile per row)
+        int worldZBase = zCameraTile + _viewConfig.ExtraDepthTiles * FixedPoint.TILE_SIZE;
 
         // For each tile corner row (back to front)
-        for (int row = 0; row < FixedPoint.TILES_Z; row++)
+        for (int row = 0; row < _viewConfig.TilesZ; row++)
         {
             _state.TileCornerRow = row;
 
@@ -304,7 +347,11 @@ public class GameEngine
 
                     if (c00.x < 0 || c10.x < 0 || c01.x < 0 || c11.x < 0) continue;
 
-                    int colour = _landscape.GetTileColour(row);
+                    // Brightness row: the original ramp only covers rows 0-10
+                    // counting from the original back edge. The extension rows
+                    // use the darkest shade and the original rows keep their
+                    // ramp (BigLander's fix: SUBS R8, R8, #TILES_Z-11 / MOVLT R8, #0).
+                    int colour = _landscape.GetTileColour(_viewConfig.MapTileCornerRow(row));
                     byte vidc = (byte)(colour & 0xFF);
 
                     _rasterizer.DrawTriangle(c00.x, c00.y, c10.x, c10.y, c11.x, c11.y, vidc);
@@ -331,8 +378,12 @@ public class GameEngine
         // Buffer indices clamp at LANDSCAPE_Z_DEPTH (10), so buffer 11 is never
         // populated; drawing it instead of buffer 9 left all objects on the 9th
         // z-row invisible.
-        DrawBuffer(FixedPoint.TILES_Z - 2);
-        DrawBuffer(FixedPoint.TILES_Z - 1);
+        //
+        // In the extended view, buffer 0 can legitimately hold shadows of the
+        // far-band objects (Lander.arm culls them because z > 20 never occurs);
+        // it is drawn after row 2, the same 2-row latency as the original.
+        DrawBuffer(_viewConfig.TilesZ - 2);
+        DrawBuffer(_viewConfig.TilesZ - 1);
     }
 
     // ---- Buffer rendering to framebuffer ----
