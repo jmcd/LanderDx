@@ -159,15 +159,29 @@ public class GraphicsBuffers
 
     /// <summary>
     /// Get a read-only span over a specific buffer's data (up to the terminator).
+    /// Walks commands sequentially like the original's dispatcher (18 consumes
+    /// 7 data words, 0-17 consume 1), so a 19 inside a command's payload — e.g.
+    /// a triangle at screen row y=19 — is data, not a terminator. The previous
+    /// blind scan for 19 truncated the buffer at such payloads and dropped
+    /// every command after them for that frame.
     /// </summary>
     public ReadOnlySpan<int> GetBufferData(int index)
     {
         if (index < 0 || index >= BufferCount) return [];
         var buf = _buffers[index];
-        // Scan for the terminator
-        for (int i = 0; i < buf.Length; i++)
-            if (buf[i] == COMMAND_TERMINATOR)
+        int i = 0;
+        while (i < buf.Length)
+        {
+            int cmd = buf[i];
+            if (cmd == COMMAND_TERMINATOR)
                 return buf.AsSpan(0, i);
+            if (cmd == COMMAND_TRIANGLE)
+                i += 8;
+            else if (cmd <= 17)
+                i += 2;
+            else
+                i++;  // Unknown command: skip one word, as DrawBuffer does
+        }
         return [];  // No terminator found = empty
     }
 

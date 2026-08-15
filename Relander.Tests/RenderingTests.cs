@@ -131,6 +131,25 @@ public class RenderingTests
     }
 
     [Test]
+    public void GraphicsBuffer_TerminatorInsidePayload_DoesNotTruncate()
+    {
+        // 19 is the terminator word, but it is also a legal payload value
+        // (e.g. a triangle at screen row y=19). The original dispatches
+        // commands sequentially (18 consumes 7 data words), so a 19 inside a
+        // payload is data — the buffer must include both triangles.
+        var buffers = new GraphicsBuffers(count: 4, capacity: 1024);
+        buffers.AddTriangle(0, 10, 19, 30, 40, 50, 60, 0x12345678);  // y1 = 19
+        buffers.AddTriangle(0, 70, 80, 90, 100, 110, 120, 0x12345678);
+        buffers.AddTerminators();
+
+        var data = buffers.GetBufferData(0);
+        Assert.That(data.Length, Is.EqualTo(16), "both triangles, up to the terminator");
+        Assert.That(data[8], Is.EqualTo(GraphicsBuffers.COMMAND_TRIANGLE),
+            "the second triangle must survive the y=19 payload in the first");
+        Assert.That(data[9], Is.EqualTo(70));
+    }
+
+    [Test]
     public void GraphicsBuffer_AddParticle_FormatsCorrectly()
     {
         var buffers = new GraphicsBuffers(count: 4, capacity: 1024);
