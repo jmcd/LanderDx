@@ -6,8 +6,6 @@ namespace Relander;
 public class RaylibInput : IGameInput
 {
     private bool _toggleMapLatched = false;
-    private bool _viewDepthLatched = false;
-    private bool _viewWidthLatched = false;
     private bool _coordsLatched = false;
 
     /// <summary>
@@ -19,14 +17,6 @@ public class RaylibInput : IGameInput
         if (Raylib.IsKeyPressed(KeyboardKey.Tab) || Raylib.IsKeyPressed(KeyboardKey.R))
         {
             _toggleMapLatched = true;
-        }
-        if (Raylib.IsKeyPressed(KeyboardKey.C))
-        {
-            _viewDepthLatched = true;
-        }
-        if (Raylib.IsKeyPressed(KeyboardKey.X))
-        {
-            _viewWidthLatched = true;
         }
         if (Raylib.IsKeyPressed(KeyboardKey.P))
         {
@@ -53,29 +43,6 @@ public class RaylibInput : IGameInput
     }
 
     public bool EscapePressed => Raylib.IsKeyDown(KeyboardKey.Escape);
-
-    /// <summary>
-    /// Cycle view depth (key C): latched across display frames so a tap between
-    /// 60 Hz polls is never missed. Consumed by the frontend (not IGameInput —
-    /// the view depth is a presentation option, not game state).
-    /// </summary>
-    public bool ConsumeViewDepthToggle()
-    {
-        bool val = _viewDepthLatched || Raylib.IsKeyPressed(KeyboardKey.C);
-        _viewDepthLatched = false;
-        return val;
-    }
-
-    /// <summary>
-    /// Cycle view width (key X): latched across display frames like the depth
-    /// toggle. Consumed by the frontend (presentation option, not game state).
-    /// </summary>
-    public bool ConsumeViewWidthToggle()
-    {
-        bool val = _viewWidthLatched || Raylib.IsKeyPressed(KeyboardKey.X);
-        _viewWidthLatched = false;
-        return val;
-    }
 
     /// <summary>
     /// Toggle the HUD coordinate display (key P): latched across display frames

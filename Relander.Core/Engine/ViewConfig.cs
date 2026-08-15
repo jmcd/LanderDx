@@ -36,6 +36,10 @@ public sealed class ViewConfig
     /// <summary>Extra tile columns added on each side of the grid (0 = original view).</summary>
     public int ExtraWidthCols { get; }
 
+    /// <summary>The largest supported view: the validation maximums on both
+    /// axes. The --widescreen frontend bakes this in at startup.</summary>
+    public static ViewConfig Maximum => new(MAX_EXTRA_DEPTH_TILES, MAX_EXTRA_WIDTH_COLS);
+
     public ViewConfig(int extraDepthTiles, int extraWidthCols = 0)
     {
         if (extraDepthTiles < 0 || extraDepthTiles > MAX_EXTRA_DEPTH_TILES)

@@ -29,11 +29,12 @@ public static class Program
         Raylib.SetTargetFPS(60);   // Display runs at 60 FPS for a smooth window
         Raylib.SetExitKey(KeyboardKey.Null);
 
-        // Create game engine
+        // Create game engine. Widescreen bakes in the maximum view at startup
+        // (no runtime view toggles); the default is the original view.
         var random = new RandomGenerator();
         var screen = new RaylibScreen(gameWidth, gameHeight);
         var input = new RaylibInput();
-        var engine = new GameEngine(random, screen);
+        var engine = new GameEngine(random, screen, widescreen ? ViewConfig.Maximum : null);
 
         // Start the game
         engine.StartNewGame();
@@ -59,12 +60,8 @@ public static class Program
         {
             input.PollEvents();
 
-            // View depth/width toggles (C/X) and the coordinate display (P):
-            // presentation options handled at the display rate, between game ticks.
-            if (input.ConsumeViewDepthToggle())
-                engine.CycleViewDepth();
-            if (input.ConsumeViewWidthToggle())
-                engine.CycleViewWidth();
+            // The coordinate display (P): a presentation option handled at the
+            // display rate, between game ticks.
             if (input.ConsumeCoordsToggle())
                 engine.ToggleCoords();
 

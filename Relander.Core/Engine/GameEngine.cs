@@ -16,15 +16,7 @@ public class GameEngine
     private readonly IRandomSource _random;
     private readonly IScreen _screen;
 
-    private ViewConfig _viewConfig;
-    private int _viewDepthIndex;
-    private int _viewWidthIndex;
-
-    /// <summary>View depth presets cycled by the C key (extra tile rows beyond the original grid).</summary>
-    private static readonly int[] ViewDepthPresets = { 0, 4, 8, 12, 16, 20, 24 };
-
-    /// <summary>View width presets cycled by the X key (extra tile columns per side).</summary>
-    private static readonly int[] ViewWidthPresets = { 0, 4, 8, 12, 16, 20, 24 };
+    private readonly ViewConfig _viewConfig;
 
     private readonly LandscapeGenerator _landscape;
     private readonly ObjectMap _objectMap;
@@ -44,62 +36,6 @@ public class GameEngine
     public ObjectMap ObjectMap => _objectMap;
     public ParticleSystem Particles => _particles;
 
-    /// <summary>Current number of extra view-depth rows (0 = original view).</summary>
-    public int ExtraDepthTiles => _viewConfig.ExtraDepthTiles;
-
-    /// <summary>Current number of extra view-width columns per side (0 = original view).</summary>
-    public int ExtraWidthCols => _viewConfig.ExtraWidthCols;
-
-    /// <summary>
-    /// Re-apply the view configuration to the subsystems that hold a copy of it
-    /// (graphics buffers, particle side-culling, corner stores). Must be called
-    /// between frames — the buffers are rebuilt in place, dropping in-flight
-    /// commands.
-    /// </summary>
-    private void ApplyViewConfig()
-    {
-        _buffers.Resize(_viewConfig.GraphicsBufferCount,
-            _viewConfig.LandscapeZ, _viewConfig.LandscapeZDepth, _viewConfig.LandscapeZBeyond);
-        _particles.LandscapeXHalf = _viewConfig.LandscapeXHalf;
-        _prevRowCorners = new (int, int)[_viewConfig.TilesX];
-        _curRowCorners = new (int, int)[_viewConfig.TilesX];
-    }
-
-    /// <summary>Set the extended view depth (0 = original), keeping the width.</summary>
-    public void SetExtraDepth(int extraDepthTiles)
-    {
-        _viewConfig = new ViewConfig(extraDepthTiles, _viewConfig.ExtraWidthCols);
-        ApplyViewConfig();
-    }
-
-    /// <summary>Set the extended view width in columns per side (0 = original), keeping the depth.</summary>
-    public void SetExtraWidth(int extraWidthCols)
-    {
-        _viewConfig = new ViewConfig(_viewConfig.ExtraDepthTiles, extraWidthCols);
-        ApplyViewConfig();
-    }
-
-    /// <summary>
-    /// Cycle the view depth presets: original → +4 → +8 → +12 → +16 → +20 →
-    /// +24 → original (C key, a deliberate deviation from the original —
-    /// opt-in only).
-    /// </summary>
-    public void CycleViewDepth()
-    {
-        _viewDepthIndex = (_viewDepthIndex + 1) % ViewDepthPresets.Length;
-        SetExtraDepth(ViewDepthPresets[_viewDepthIndex]);
-    }
-
-    /// <summary>
-    /// Cycle the view width presets: original → +4 → +8 → +12 → +16 → +20 →
-    /// +24 columns per side → original (X key, opt-in like the depth extension).
-    /// </summary>
-    public void CycleViewWidth()
-    {
-        _viewWidthIndex = (_viewWidthIndex + 1) % ViewWidthPresets.Length;
-        SetExtraWidth(ViewWidthPresets[_viewWidthIndex]);
-    }
-
     /// <summary>
     /// Toggle the HUD coordinate display (P key, opt-in — off by default).
     /// </summary>
@@ -111,9 +47,9 @@ public class GameEngine
     public GameEngine(IRandomSource random, IScreen screen, ViewConfig? viewConfig = null)
     {
         _state = new GameState();
+        // null = the original view; the --widescreen frontend passes
+        // ViewConfig.Maximum (baked in at startup — no runtime view toggles).
         _viewConfig = viewConfig ?? new ViewConfig(0);
-        _viewDepthIndex = global::System.Math.Max(0, Array.IndexOf(ViewDepthPresets, _viewConfig.ExtraDepthTiles));
-        _viewWidthIndex = global::System.Math.Max(0, Array.IndexOf(ViewWidthPresets, _viewConfig.ExtraWidthCols));
         _buffers = new GraphicsBuffers(_viewConfig.GraphicsBufferCount, FixedPoint.BUFFER_SIZE / 4,
             _viewConfig.LandscapeZ, _viewConfig.LandscapeZDepth, _viewConfig.LandscapeZBeyond);
         _random = random;
@@ -122,7 +58,10 @@ public class GameEngine
         _landscape = new LandscapeGenerator(_state);
         _objectMap = new ObjectMap(_landscape, _random);
         _player = new PlayerController(_state, _buffers, _landscape, _objectMap);
-        _particles = new ParticleSystem(_state, _landscape, _objectMap, _buffers, _random);
+        _particles = new ParticleSystem(_state, _landscape, _objectMap, _buffers, _random)
+        {
+            LandscapeXHalf = _viewConfig.LandscapeXHalf,  // side-culling follows the baked-in width
+        };
 
         // Play area: the full screen minus the 16-row score bar (320×240 in
         // the original; the --widescreen frontend passes a 456×256 screen).

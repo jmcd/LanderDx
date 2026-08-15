@@ -217,29 +217,23 @@ public class ViewDepthTests
             $"far-band pad tiles should render at the darkest brightness ({matches} matching pixels)");
     }
 
-    // ---- (vi) Runtime toggle API ----
+    // ---- (vi) ViewConfig.Maximum — the baked-in widescreen view ----
 
     [Test]
-    public void CycleViewDepth_TogglesPresets_AndExtendedFrameRendersFarBand()
+    public void MaximumView_RendersFarBandAtConstruction()
     {
         var screen = new TestScreen();
-        var engine = new GameEngine(new RandomGenerator(777), screen);
+        var engine = new GameEngine(new RandomGenerator(777), screen, ViewConfig.Maximum);
         engine.StartNewGame();
 
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(0));
-
-        foreach (int preset in new[] { 4, 8, 12, 16, 20, 24 })
+        Assert.Multiple(() =>
         {
-            engine.CycleViewDepth();
-            Assert.That(engine.ExtraDepthTiles, Is.EqualTo(preset));
-        }
-        engine.CycleViewDepth();
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(0));
+            Assert.That(ViewConfig.Maximum.ExtraDepthTiles, Is.EqualTo(ViewConfig.MAX_EXTRA_DEPTH_TILES));
+            Assert.That(ViewConfig.Maximum.ExtraWidthCols, Is.EqualTo(ViewConfig.MAX_EXTRA_WIDTH_COLS));
+        });
 
-        // Set directly and confirm the next frame renders the far band over
-        // the launchpad (same setup and discriminator as the test above).
-        engine.SetExtraDepth(10);
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(10));
+        // The far band renders over the launchpad (same setup and
+        // discriminator as the test above).
         engine.State.XPlayer = 0;
         engine.State.ZPlayer = 0x00800000;
         engine.Update(new TestInput());
@@ -249,18 +243,13 @@ public class ViewDepthTests
         byte expected = (byte)(engine.Landscape.GetTileColour(0) & 0xFF);
 
         Assert.That(CountExpectedByteInFarBand(screen, expected), Is.GreaterThanOrEqualTo(10),
-            "frame after SetExtraDepth(10) should render the far band");
-
-        // Back to the original view
-        engine.SetExtraDepth(0);
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(0));
+            "the maximum view should render the far band without any runtime toggling");
     }
 
     [Test]
-    public void SetExtraDepth_RejectsOutOfRange()
+    public void ViewConfig_RejectsOutOfRangeDepth()
     {
-        var engine = new GameEngine(new RandomGenerator(1), new TestScreen());
-        Assert.Throws<ArgumentOutOfRangeException>(() => engine.SetExtraDepth(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => engine.SetExtraDepth(ViewConfig.MAX_EXTRA_DEPTH_TILES + 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ViewConfig(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ViewConfig(ViewConfig.MAX_EXTRA_DEPTH_TILES + 1));
     }
 }

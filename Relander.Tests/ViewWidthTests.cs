@@ -138,56 +138,32 @@ public class ViewWidthTests
             "tiles whose corners cross the left screen edge must be drawn and clipped, not skipped");
     }
 
-    // ---- Runtime toggle API ----
+    // ---- Baked-in view config (no runtime toggles) ----
 
     [Test]
-    public void CycleViewWidth_TogglesPresets()
+    public void CtorConfig_SetsParticleCullingAndCornerStores()
     {
-        var engine = new GameEngine(new RandomGenerator(1), new TestScreen());
+        // The view config is baked in at construction: the particle side-culling
+        // bound and the corner stores must follow it without any runtime setter.
+        var engine = new GameEngine(new RandomGenerator(1), new TestScreen(), new ViewConfig(10, 3));
 
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(0));
-
-        foreach (int preset in new[] { 4, 8, 12, 16, 20, 24 })
-        {
-            engine.CycleViewWidth();
-            Assert.That(engine.ExtraWidthCols, Is.EqualTo(preset));
-        }
-        engine.CycleViewWidth();
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(0));
-    }
-
-    [Test]
-    public void SetExtraWidth_KeepsDepthAndUpdatesParticleCulling()
-    {
-        var engine = new GameEngine(new RandomGenerator(1), new TestScreen());
-        engine.SetExtraDepth(10);
-
-        engine.SetExtraWidth(3);
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(3));
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(10), "width toggle must not disturb depth");
         Assert.That(engine.Particles.LandscapeXHalf,
             Is.EqualTo(FixedPoint.LANDSCAPE_X_HALF + 3 * FixedPoint.TILE_SIZE),
-            "particle side-culling bound must follow the extended width");
-
-        // And a depth toggle keeps the width.
-        engine.SetExtraDepth(0);
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(3), "depth toggle must not disturb width");
-        Assert.That(engine.Particles.LandscapeXHalf,
-            Is.EqualTo(FixedPoint.LANDSCAPE_X_HALF + 3 * FixedPoint.TILE_SIZE));
+            "particle side-culling bound must follow the baked-in width");
     }
 
     [Test]
-    public void CombinedDepthAndWidth_RendersAFrame()
+    public void MaximumView_RendersAFrame()
     {
         var screen = new TestScreen();
-        var engine = new GameEngine(new RandomGenerator(4242), screen);
+        var engine = new GameEngine(new RandomGenerator(4242), screen, ViewConfig.Maximum);
         engine.StartNewGame();
 
-        // Exercise the largest preset grid: +24 rows and +24 columns per side.
-        engine.SetExtraDepth(24);
-        engine.SetExtraWidth(24);
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(24));
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(24));
+        Assert.Multiple(() =>
+        {
+            Assert.That(ViewConfig.Maximum.ExtraDepthTiles, Is.EqualTo(ViewConfig.MAX_EXTRA_DEPTH_TILES));
+            Assert.That(ViewConfig.Maximum.ExtraWidthCols, Is.EqualTo(ViewConfig.MAX_EXTRA_WIDTH_COLS));
+        });
 
         engine.Update(new TestInput());  // must not throw; buffers must not overflow (Debug.Assert)
 
@@ -195,10 +171,10 @@ public class ViewWidthTests
     }
 
     [Test]
-    public void SetExtraWidth_RejectsOutOfRange()
+    public void DefaultEngine_UsesOriginalView()
     {
+        // null config = the original 13x11-corner grid with original culling.
         var engine = new GameEngine(new RandomGenerator(1), new TestScreen());
-        Assert.Throws<ArgumentOutOfRangeException>(() => engine.SetExtraWidth(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => engine.SetExtraWidth(ViewConfig.MAX_EXTRA_WIDTH_COLS + 1));
+        Assert.That(engine.Particles.LandscapeXHalf, Is.EqualTo(FixedPoint.LANDSCAPE_X_HALF));
     }
 }
