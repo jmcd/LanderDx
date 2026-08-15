@@ -1,8 +1,8 @@
 # Lander DX
 
-A faithful .NET + Raylib conversion of David Braben's 1987 Acorn Archimedes game **Lander** — the first game ever written for the ARM platform.
+A faithful .NET + Raylib conversion of **Lander**, the 1987 Acorn Archimedes game written by [David Braben](https://en.wikipedia.org/wiki/David_Braben) — the first game ever written for the ARM platform.
 
-The conversion is based on the [fully documented source code](https://lander.bbcelite.com/) reconstructed by Mark Moxon from a disassembly of the original binaries.
+The conversion is based on the [fully documented source code](https://lander.bbcelite.com/) reconstructed by Mark Moxon from a disassembly of Braben's original binaries.
 
 **Authors:** [jmcd](https://github.com/jmcd) and Claude Code (Anthropic's CLI running the deepseek-v4-pro model), working together over roughly **16 hours** of afternoon sessions across five weekdays in August 2026 — from the initial port through a fidelity audit (which caught 12 real bugs), a one-test-per-fix campaign, the opt-in DX enhancements, and the browser-wasm version: 105 commits, ~12,000 lines of C#, 196 discriminating tests.
 
