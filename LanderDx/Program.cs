@@ -15,26 +15,26 @@ public static class Program
 
     public static void Main(string[] args)
     {
-        // --widescreen (opt-in, startup only): 456×256 framebuffer (16:9) with a
-        // 456×240 play area, at 3× scale (1368×768 — 4× would give 1824×1024,
-        // too tight on common 1080p desktops). The default is the untouched
-        // 320×256 original at 4× (1280×1024).
-        bool widescreen = args.Contains("--widescreen");
-        int gameWidth = widescreen ? 456 : 320;
+        // The default is the enhanced widescreen mode: a 456×256 framebuffer
+        // (16:9, 456×240 play area) at 3× scale (1368×768) with the maximum
+        // view size baked in. --fullscreen selects the original 320×256
+        // resolution (the untouched byte-identical view) at 4× (1280×1024).
+        bool original = args.Contains("--fullscreen");
+        int gameWidth = original ? 320 : 456;
         const int gameHeight = 256;
-        int scale = widescreen ? 3 : 4;
+        int scale = original ? 4 : 3;
 
         // Initialize raylib
         Raylib.InitWindow(gameWidth * scale, gameHeight * scale, "Lander DX");
         Raylib.SetTargetFPS(60);   // Display runs at 60 FPS for a smooth window
         Raylib.SetExitKey(KeyboardKey.Null);
 
-        // Create game engine. Widescreen bakes in the maximum view at startup
-        // (no runtime view toggles); the default is the original view.
+        // Create game engine. The widescreen default bakes in the maximum view
+        // at startup (no runtime view toggles); --fullscreen uses the original.
         var random = new RandomGenerator();
         var screen = new RaylibScreen(gameWidth, gameHeight);
         var input = new RaylibInput();
-        var engine = new GameEngine(random, screen, widescreen ? ViewConfig.Maximum : null);
+        var engine = new GameEngine(random, screen, original ? null : ViewConfig.Maximum);
 
         // Start the game
         engine.StartNewGame();

@@ -7,14 +7,15 @@ const { getAssemblyExports, getConfig } = runtime;
 const config = getConfig();
 const exports = await getAssemblyExports(config.mainAssemblyName);
 
-// Widescreen via ?widescreen=1, mirroring the desktop --widescreen flag.
+// Widescreen is the default (mirroring the desktop); ?original=1 selects the
+// original 320x256 view, like the desktop's --fullscreen flag.
 const params = new URLSearchParams(location.search);
-const widescreen = params.get('widescreen') === '1';
+const original = params.get('original') === '1';
 
-exports.Program.Start(widescreen);
+exports.Program.Start(!original);
 const width = exports.Program.GetWidth();
 const height = 256;
-const scale = widescreen ? 3 : 4;
+const scale = original ? 4 : 3;
 
 const canvas = document.getElementById('game');
 canvas.width = width;
@@ -64,7 +65,7 @@ function frame(now) {
     while (acc >= TICK) {
         const running = exports.Program.Update(held, pressed);
         pressed = 0;
-        if (!running) exports.Program.Start(widescreen);  // Escape = new game
+        if (!running) exports.Program.Start(!original);  // Escape = new game
         acc -= TICK;
         stale = true;
     }

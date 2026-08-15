@@ -12,27 +12,27 @@ const { getAssemblyExports, getConfig } = runtime;
 const config = getConfig();
 const exports = await getAssemblyExports(config.mainAssemblyName);
 
-exports.Program.Start(false);
-console.log('width:', exports.Program.GetWidth());
+// The default mode: widescreen with the maximum view (Start(true)).
+exports.Program.Start(true);
+console.log('default width:', exports.Program.GetWidth());
 const palette = exports.Program.GetPalette();
 console.log('palette bytes:', palette.length, 'first rgba:', Array.from(palette.slice(0, 8)));
 
-// Run 30 game ticks with no input
+for (let i = 0; i < 5; i++) exports.Program.Update(0, 0);
+const wide = exports.Program.GetScreen();
+let wideNonZero = 0;
+for (const b of wide) if (b !== 0) wideNonZero++;
+console.log('widescreen non-zero:', wideNonZero, 'of', wide.length);
+
+// The opt-out original mode (Start(false)): 30 ticks with no input.
+exports.Program.Start(false);
+console.log('original width:', exports.Program.GetWidth());
 for (let i = 0; i < 30; i++) exports.Program.Update(0, 0);
 
 const screen = exports.Program.GetScreen();
 let nonZero = 0;
 for (const b of screen) if (b !== 0) nonZero++;
 console.log('screen bytes:', screen.length, 'non-zero (indices):', nonZero);
-
-// Widescreen path too
-exports.Program.Start(true);
-console.log('widescreen width:', exports.Program.GetWidth());
-for (let i = 0; i < 5; i++) exports.Program.Update(0, 0);
-const wide = exports.Program.GetScreen();
-let wideNonZero = 0;
-for (const b of wide) if (b !== 0) wideNonZero++;
-console.log('widescreen non-zero:', wideNonZero, 'of', wide.length);
 
 // Mirrors the browser flow: runMain keeps the runtime alive for the loop.
 await runtime.runMain();
