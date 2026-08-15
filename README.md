@@ -4,6 +4,8 @@ A faithful .NET + Raylib conversion of **Lander**, the 1987 Acorn Archimedes gam
 
 The conversion is based on the [fully documented source code](https://lander.bbcelite.com/) reconstructed by Mark Moxon from a disassembly of Braben's original binaries.
 
+▶ **Play it in your browser: [jmcd.co/LanderDx](https://jmcd.co/LanderDx)** — the WebAssembly build of this same engine (P toggles the position/landing panel; `?original=1` selects the original resolution).
+
 **Authors:** [jmcd](https://github.com/jmcd) and Claude Code (Anthropic's CLI running the deepseek-v4-pro model), working together over roughly **16 hours** of afternoon sessions across five weekdays in August 2026 — from the initial port through a fidelity audit (which caught 12 real bugs), a one-test-per-fix campaign, the opt-in DX enhancements, and the browser-wasm version: 105 commits, ~12,000 lines of C#, 196 discriminating tests.
 
 ## Rules of Implementation
