@@ -44,9 +44,23 @@ public class CoordDisplayTests
     }
 
     [Test]
-    public void FormatHud_BothAxes()
+    public void FormatHud_AllThreeAxes()
     {
-        Assert.That(CoordDisplay.FormatHud(0x04A00000, -0x00800000), Is.EqualTo("X 4.6  Z 255.5"));
+        Assert.That(CoordDisplay.FormatHud(0x04A00000, 0x02800000, -0x00800000),
+            Is.EqualTo("X 4.6 Y 2.5 Z 255.5"));
+    }
+
+    [Test]
+    public void FormatAltitude_IsUnwrapped()
+    {
+        // Positive is down toward terrain, negative is up
+        Assert.That(CoordDisplay.FormatAltitude(0x02800000), Is.EqualTo("2.5"));
+        // Negative values read as their true magnitude, not the floor+frac form
+        Assert.That(CoordDisplay.FormatAltitude(-0x00800000), Is.EqualTo("-0.5"));
+        Assert.That(CoordDisplay.FormatAltitude(-0x0CC00000), Is.EqualTo("-12.7"));
+        // Altitude is not periodic: a negative value reads negative (the
+        // wrapped form would be "156.0" for -100 tiles)
+        Assert.That(CoordDisplay.FormatAltitude(-100 * FixedPoint.TILE_SIZE), Is.EqualTo("-100.0"));
     }
 
     // ---- Integration: toggle changes only the HUD text region ----
@@ -71,15 +85,16 @@ public class CoordDisplayTests
         var fbOn = screenOn.GetFramebuffer();
 
         // The coords draw at score-bar row 1 (screen y 8..15), x = 48, and the
-        // text is at most ~20 chars (160 px) wide. Everything outside the box
-        // must be byte-identical; inside, the text must actually appear.
+        // three-axis text is at most 24 chars (192 px, ending just before the
+        // lives counter at x=240). Everything outside the box must be
+        // byte-identical; inside, the text must actually appear.
         int differingInside = 0;
         for (int y = 0; y < 256; y++)
         {
             int rowStart = y * 320;
             for (int x = 0; x < 320; x++)
             {
-                bool inside = x >= 40 && x <= 216 && y >= 8 && y <= 15;
+                bool inside = x >= 40 && x <= 239 && y >= 8 && y <= 15;
                 bool same = fbOn[rowStart + x] == fbOff[rowStart + x];
                 if (inside)
                 {

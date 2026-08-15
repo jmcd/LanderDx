@@ -551,12 +551,13 @@ public class GameEngine
         SystemFont.DrawString(screenBuf, stride, 280, 8, highStr, white);
 
         // 3. Coordinate display (P key, opt-in — no original counterpart): ship
-        // tile coordinates in the empty middle of text row 1, wrapped to the
-        // 256-tile periodic world so the launchpad always reads as 0..8.
+        // coordinates in the empty middle of text row 1. X/Z wrap with the
+        // 256-tile periodic world so the launchpad always reads as 0..8; Y is
+        // the raw altitude (positive down, negative up) and never wraps.
         if (_state.ShowCoords)
         {
             SystemFont.DrawString(screenBuf, stride, 48, 8,
-                CoordDisplay.FormatHud(_state.XPlayer, _state.ZPlayer), white);
+                CoordDisplay.FormatHud(_state.XPlayer, _state.YPlayer, _state.ZPlayer), white);
         }
     }
 

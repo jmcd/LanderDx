@@ -15,15 +15,35 @@ public static class CoordDisplay
     /// as the original's tile addressing) wrapped to the 256-tile periodic
     /// world, matching the minimap — so the launchpad always reads as 0..8.
     /// </summary>
-    public static string FormatCoord(int value)
+    public static string FormatCoord(int value) =>
+        FormatTileAndTenths((value >> 24) & 0xFF, value);
+
+    /// <summary>
+    /// Format the ship's world Y coordinate with one decimal place — NOT
+    /// wrapped: altitude is not periodic. Positive is down toward terrain,
+    /// negative is up.
+    /// </summary>
+    public static string FormatAltitude(int value)
     {
-        int tile = (value >> 24) & 0xFF;            // floor for negative values, wrapped to 0..255
-        int frac = value & 0x00FFFFFF;              // lower 24 bits, always positive
-        int tenths = frac * 10 / FixedPoint.TILE_SIZE;
-        return $"{tile}.{tenths}";
+        if (value >= 0)
+            return FormatTileAndTenths(value >> 24, value);
+
+        // Negative: format the magnitude with a leading sign — the floor+frac
+        // form used by FormatCoord would misrepresent negatives (e.g. -0.5
+        // would read as "-1.5").
+        uint mag = unchecked((uint)(-value));
+        int tile = (int)(mag >> 24);
+        int tenths = (int)((mag & 0x00FFFFFF) * 10 / FixedPoint.TILE_SIZE);
+        return $"-{tile}.{tenths}";
     }
 
-    /// <summary>Full HUD line: ship tile coordinates on both ground axes.</summary>
-    public static string FormatHud(int xFixed, int zFixed) =>
-        $"X {FormatCoord(xFixed)}  Z {FormatCoord(zFixed)}";
+    /// <summary>Full HUD line: ship coordinates on all three axes (Y is the raw, unwrapped altitude).</summary>
+    public static string FormatHud(int xFixed, int yFixed, int zFixed) =>
+        $"X {FormatCoord(xFixed)} Y {FormatAltitude(yFixed)} Z {FormatCoord(zFixed)}";
+
+    private static string FormatTileAndTenths(int tile, int value)
+    {
+        int tenths = (value & 0x00FFFFFF) * 10 / FixedPoint.TILE_SIZE;  // lower 24 bits, always positive
+        return $"{tile}.{tenths}";
+    }
 }
