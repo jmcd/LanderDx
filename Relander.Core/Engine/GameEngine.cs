@@ -515,12 +515,44 @@ public class GameEngine
         // position in the empty middle of text row 1, in player-facing terms —
         // X and Y are the ground axes (world X/Z, wrapped with the 256-tile
         // periodic world so the launchpad always reads as 0..8) and Alt is the
-        // height above the terrain below the ship (positive up).
+        // height above the terrain below the ship (positive up). Also draws the
+        // landing panel (top-left of the play area): total speed against the
+        // landing limit, pad-box alignment, and a LAND OK cue — the same checks
+        // the landing code itself makes, so the player can see when the descent
+        // would land safely.
         if (_state.ShowCoords)
         {
             int groundAltitude = _landscape.GetAltitude(_state.XPlayer, _state.ZPlayer);
             SystemFont.DrawString(screenBuf, stride, 40, 8,
                 CoordDisplay.FormatHud(_state.XPlayer, _state.ZPlayer, _state.YPlayer, groundAltitude), white);
+
+            int totalSpeed = global::System.Math.Abs(_state.XVelocity)
+                           + global::System.Math.Abs(_state.YVelocity)
+                           + global::System.Math.Abs(_state.ZVelocity);
+            bool overPad = CoordDisplay.IsOverPad(_state.XPlayer, _state.ZPlayer);
+
+            // Panel box: black interior with a white border frame, x 0..103,
+            // screen rows 20..59 (top-left of the play area, opposite the
+            // mini-map inset).
+            for (int y = 20; y <= 59; y++)
+                screenBuf.Slice(y * stride, 104).Fill(0);
+            for (int x = 0; x <= 103; x++)
+            {
+                screenBuf[20 * stride + x] = white;
+                screenBuf[59 * stride + x] = white;
+            }
+            for (int y = 20; y <= 59; y++)
+            {
+                screenBuf[y * stride] = white;
+                screenBuf[y * stride + 103] = white;
+            }
+
+            SystemFont.DrawString(screenBuf, stride, 2, 22,
+                CoordDisplay.FormatSpeedLine(totalSpeed), white);
+            SystemFont.DrawString(screenBuf, stride, 2, 30,
+                CoordDisplay.FormatPadLine(overPad), white);
+            SystemFont.DrawString(screenBuf, stride, 2, 38,
+                CoordDisplay.FormatLandCue(overPad, totalSpeed), white);
         }
     }
 

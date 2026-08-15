@@ -53,4 +53,36 @@ public static class CoordDisplay
         int tenths = (value & 0x00FFFFFF) * 10 / FixedPoint.TILE_SIZE;  // lower 24 bits, always positive
         return $"{tile}.{tenths}";
     }
+
+    // ---- Landing status (opt-in HUD panel, P key) ----
+
+    /// <summary>Format a fixed-point speed in tiles per tick with two decimals (e.g. "0.12").</summary>
+    public static string FormatSpeed(int speed)
+    {
+        int hundredths = (int)((long)speed * 100 / FixedPoint.TILE_SIZE);
+        return $"{hundredths / 100}.{hundredths % 100:D2}";
+    }
+
+    /// <summary>True when the total speed is below the landing limit — the same
+    /// check the landing code makes (PlayerController.CheckCollisionAndLanding:
+    /// (uint)totalSpeed &lt; LANDING_SPEED).</summary>
+    public static bool IsLandingSpeed(int totalSpeed) =>
+        (uint)totalSpeed < FixedPoint.LANDING_SPEED;
+
+    /// <summary>True when the ship is inside the 8×8-tile launchpad acceptance box —
+    /// the same check the landing code makes.</summary>
+    public static bool IsOverPad(int x, int z) =>
+        (uint)x < FixedPoint.LAUNCHPAD_SIZE && (uint)z < FixedPoint.LAUNCHPAD_SIZE;
+
+    /// <summary>The landing panel's speed line, e.g. "SPD 0.08 OK" or "SPD 0.20 !".</summary>
+    public static string FormatSpeedLine(int totalSpeed) =>
+        $"SPD {FormatSpeed(totalSpeed)} {(IsLandingSpeed(totalSpeed) ? "OK" : "!")}";
+
+    /// <summary>The landing panel's pad line, e.g. "PAD IN" or "PAD OUT".</summary>
+    public static string FormatPadLine(bool overPad) => overPad ? "PAD IN" : "PAD OUT";
+
+    /// <summary>The landing panel's cue line: "LAND OK" when the descent would
+    /// land safely (over the pad and below the speed limit), "LAND -" otherwise.</summary>
+    public static string FormatLandCue(bool overPad, int totalSpeed) =>
+        overPad && IsLandingSpeed(totalSpeed) ? "LAND OK" : "LAND -";
 }
