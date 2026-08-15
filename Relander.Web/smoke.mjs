@@ -7,7 +7,8 @@
 // numbers on every run (the engine is deterministic for a fixed seed).
 import { dotnet } from './bin/Release/net10.0/browser-wasm/AppBundle/_framework/dotnet.js';
 
-const { getAssemblyExports, getConfig } = await dotnet.create();
+const runtime = await dotnet.create();
+const { getAssemblyExports, getConfig } = runtime;
 const config = getConfig();
 const exports = await getAssemblyExports(config.mainAssemblyName);
 
@@ -33,5 +34,6 @@ let wideNonZero = 0;
 for (const b of wide) if (b !== 0) wideNonZero++;
 console.log('widescreen non-zero:', wideNonZero, 'of', wide.length);
 
-await dotnet.run();
+// Mirrors the browser flow: runMain keeps the runtime alive for the loop.
+await runtime.runMain();
 console.log('SMOKE OK');

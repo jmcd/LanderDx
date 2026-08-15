@@ -1,8 +1,9 @@
 import { dotnet } from './_framework/dotnet.js';
 
-const { getAssemblyExports, getConfig } = await dotnet
+const runtime = await dotnet
     .withDiagnosticTracing(false)
     .create();
+const { getAssemblyExports, getConfig } = runtime;
 const config = getConfig();
 const exports = await getAssemblyExports(config.mainAssemblyName);
 
@@ -86,6 +87,8 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
-// Enter managed code (Program.Main is a no-op — the JS side drives the loop,
-// but this matches the canonical boot sequence).
-await dotnet.run();
+// Enter managed code (Program.Main is a no-op — the JS side drives the loop).
+// runMain() runs Main WITHOUT exiting the runtime, so the rAF loop can keep
+// calling the exported Update() afterwards (dotnet.run() would exit and make
+// the first frame throw "runtime already exited").
+await runtime.runMain();
