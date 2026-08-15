@@ -322,5 +322,15 @@ The conversion uses a single `byte[320×256]` framebuffer. The top 16 pixel rows
 6. **View size**: An opt-in deviation — the `--widescreen` mode renders the landscape at the maximum view size (+100 tile-corner rows of depth and +32 tile columns per side, the validation caps), baked in at startup with no runtime toggles. The extra far rows sample terrain behind the camera tile and use the darkest brightness shade, the same fix as the original's BigLander variant (Lander.arm `big-landscape` branch: `SUBS R8, R8, #TILES_Z-11` / `MOVLT R8, #0`); the extra columns keep the original columns at their exact world positions, and the particle/rock side-culling bound follows the extended width. Without the flag the view is the original 13×11-corner grid and renders identically in every mode
 8. **Coordinate display**: An opt-in deviation — pressing P toggles the ship's position in the score bar in player-facing terms (e.g. `X 123.4 Y 45.6 Alt 5.2`): X and Y are the ground axes (the game's world X and Z) and wrap with the 256-tile periodic world so the launchpad always reads as tiles 0-8 on both axes; Alt is the height above the terrain directly below the ship (positive up, ~0.4 on the pad) and never wraps. P also toggles a small **landing panel** at the top-left of the play area showing the total speed against the landing limit (`SPD 0.08 OK`), whether the ship is inside the 8×8-tile pad acceptance box (`PAD IN/OUT`), and a `LAND OK` cue when the descent would land safely — the same checks the landing code itself makes. Off by default
 9. **Widescreen**: An opt-in deviation — launch with `--widescreen` (`dotnet run --project Relander -- --widescreen`) to render a 456×256 framebuffer in a 1368×768 window (16:9; play area 456×240). The HUD anchors to the wider screen: lives and high-score digits move to the right edge, the fuel bar spans the full width, the mini-map inset sits at the top-right, and the game-over message stays centred. The ship's world x=0 still projects to screen centre (now x=228), and the landscape renders at the maximum view size (see item 6), which fills the wider view across its full depth. The mode is fixed at startup and cannot be toggled in-game. Without the flag the game is the original 320×256, byte-identical
+10. **Browser version**: The same `Relander.Core` engine compiled to WebAssembly (`Relander.Web`, an experimental browser frontend — no code changes to the engine, no rewrite). Publish and serve it with:
+
+    ```
+    cd Relander.Web
+    dotnet publish -c Release            # needs the wasm-tools workload: dotnet workload install wasm-tools
+    node smoke.mjs                      # headless engine smoke test (optional but recommended)
+    python3 -m http.server -d bin/Release/net10.0/browser-wasm/AppBundle
+    ```
+
+    then open http://localhost:8000 (append `?widescreen=1` for the 456×256 mode). Controls match the desktop; Esc starts a new game instead of quitting. The project is deliberately outside the solution so the desktop build never needs the wasm workload.
 
 
