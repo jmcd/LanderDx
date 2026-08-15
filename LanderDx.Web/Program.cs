@@ -47,6 +47,10 @@ public static partial class Program
         return _engine!.Update(_input);
     }
 
+    /// <summary>Toggle the P-key display (position readout + landing panel).</summary>
+    [JSExport]
+    internal static void ToggleCoords() => _engine!.ToggleCoords();
+
     /// <summary>The screen framebuffer as palette indices (width x 256).</summary>
     [JSExport]
     internal static byte[] GetScreen() => _screen!.GetFramebuffer().ToArray();

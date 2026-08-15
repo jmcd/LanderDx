@@ -34,6 +34,19 @@ let nonZero = 0;
 for (const b of screen) if (b !== 0) nonZero++;
 console.log('screen bytes:', screen.length, 'non-zero (indices):', nonZero);
 
+// The P-key display must work through the exported ToggleCoords: the
+// position readout and landing panel add pixels.
+exports.Program.ToggleCoords();
+exports.Program.Update(0, 0);
+const withCoords = exports.Program.GetScreen();
+let coordsNonZero = 0;
+for (const b of withCoords) if (b !== 0) coordsNonZero++;
+console.log('with coords display non-zero:', coordsNonZero);
+if (coordsNonZero === nonZero) {
+    console.error('SMOKE FAILED: toggling the coords display changed nothing');
+    process.exit(1);
+}
+
 // Mirrors the browser flow: runMain keeps the runtime alive for the loop.
 await runtime.runMain();
 console.log('SMOKE OK');

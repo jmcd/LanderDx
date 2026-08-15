@@ -39,6 +39,13 @@ let held = 0;
 let pressed = 0;
 
 window.addEventListener('keydown', (e) => {
+    // P toggles the coordinate/landing display directly (it is not part of
+    // the per-tick key bitmask).
+    if (e.code === 'KeyP' && !e.repeat) {
+        e.preventDefault();
+        exports.Program.ToggleCoords();
+        return;
+    }
     const bit = KEYMAP[e.code];
     if (bit === undefined) return;
     e.preventDefault();
