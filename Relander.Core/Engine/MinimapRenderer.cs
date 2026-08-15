@@ -7,6 +7,10 @@ namespace Relander.Core.Engine;
 /// Renders a 2D radar mini-map overlay (1px per 4 tiles inset or 1px per tile full screen).
 /// Shows terrain heights, sea level, launchpad, 3D objects, falling rocks, and player location.
 /// Inspired by Zarch / Virus by David Braben.
+///
+/// Orientation matches the 3D view: +x to the right, and +z (far, the horizon
+/// direction on screen) at the TOP of the map. Coordinates wrap with the
+/// 256-tile periodic world, like the terrain cache and the coordinate display.
 /// </summary>
 public static class MinimapRenderer
 {
@@ -128,11 +132,12 @@ public static class MinimapRenderer
             }
         }
 
-        // Downsample 256x256 map cache to 64x64 (1px per 4x4 tiles)
+        // Downsample 256x256 map cache to 64x64 (1px per 4x4 tiles).
+        // Flip z: far (+z) at the top, matching the 3D view's horizon.
         for (int my = 0; my < size; my++)
         {
             int rowOffset = (startY + my) * stride;
-            int tz = (my * 4) & 0xFF;
+            int tz = (255 - my * 4) & 0xFF;
 
             for (int mx = 0; mx < size; mx++)
             {
@@ -142,9 +147,11 @@ public static class MinimapRenderer
             }
         }
 
-        // Overlay Player Ship position (blinking cyan crosshair)
-        int px = global::System.Math.Clamp((state.XPlayer >> 24) / 4, 0, 63);
-        int pz = global::System.Math.Clamp((state.ZPlayer >> 24) / 4, 0, 63);
+        // Overlay Player Ship position (blinking cyan crosshair), wrapped with
+        // the periodic world like the terrain — no pinning at the edges — and
+        // z-flipped to match the map.
+        int px = ((state.XPlayer >> 24) & 0xFF) / 4;
+        int pz = 63 - (((state.ZPlayer >> 24) & 0xFF) / 4);
         byte playerCol = (state.MainLoopCount % 8 < 4) ? VidcColour.Encode(0, 15, 15) : VidcColour.Encode(15, 15, 0);
 
         DrawDot(screenBuf, stride, startX + px, startY + pz, playerCol);
@@ -158,10 +165,11 @@ public static class MinimapRenderer
     {
         int startX = 32; // Center 256px wide map in 320px screen width
 
-        // Draw 1px per tile directly from 256x256 cache
+        // Draw 1px per tile directly from 256x256 cache.
+        // Flip z: far (+z) at the top, matching the 3D view's horizon.
         for (int tz = 0; tz < 256; tz++)
         {
-            int rowOffset = tz * stride;
+            int rowOffset = (255 - tz) * stride;
             int cacheOffset = tz * 256;
 
             for (int tx = 0; tx < 256; tx++)
@@ -170,9 +178,10 @@ public static class MinimapRenderer
             }
         }
 
-        // Overlay Player Ship position (blinking cyan crosshair 1px per tile)
-        int px = global::System.Math.Clamp(state.XPlayer >> 24, 0, 255);
-        int pz = global::System.Math.Clamp(state.ZPlayer >> 24, 0, 255);
+        // Overlay Player Ship position (blinking cyan crosshair 1px per tile),
+        // wrapped with the periodic world and z-flipped to match the map.
+        int px = (state.XPlayer >> 24) & 0xFF;
+        int pz = 255 - ((state.ZPlayer >> 24) & 0xFF);
         byte playerCol = (state.MainLoopCount % 8 < 4) ? VidcColour.Encode(0, 15, 15) : VidcColour.Encode(15, 15, 0);
 
         for (int dx = -2; dx <= 2; dx++)
