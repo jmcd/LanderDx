@@ -47,9 +47,18 @@ public class CoordDisplayTests
     public void FormatHud_AllThreeAxes()
     {
         // Player-facing labels: X = ground east-west, Y = ground north-south
-        // (world Z), Alt = altitude (world Y)
-        Assert.That(CoordDisplay.FormatHud(0x04A00000, -0x00800000, 0x02800000),
-            Is.EqualTo("X 4.6 Y 255.5 Alt 2.5"));
+        // (world Z), Alt = height above terrain (ground altitude minus ship Y).
+        // Ship on the pad: Y = LAUNCHPAD_Y, ground = LAUNCHPAD_ALTITUDE, so
+        // Alt = the undercarriage height (0.39 tiles -> "0.3").
+        Assert.That(CoordDisplay.FormatHud(0x04A00000, -0x00800000,
+                FixedPoint.LAUNCHPAD_Y, FixedPoint.LAUNCHPAD_ALTITUDE),
+            Is.EqualTo("X 4.6 Y 255.5 Alt 0.3"));
+
+        // Flying 50 tiles above the pad: Alt is positive and grows upward
+        Assert.That(CoordDisplay.FormatHud(0x04000000, 0x04000000,
+                FixedPoint.LAUNCHPAD_Y - unchecked(50 * FixedPoint.TILE_SIZE),
+                FixedPoint.LAUNCHPAD_ALTITUDE),
+            Is.EqualTo("X 4.0 Y 4.0 Alt 50.3"));
     }
 
     [Test]

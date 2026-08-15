@@ -554,11 +554,12 @@ public class GameEngine
         // position in the empty middle of text row 1, in player-facing terms —
         // X and Y are the ground axes (world X/Z, wrapped with the 256-tile
         // periodic world so the launchpad always reads as 0..8) and Alt is the
-        // altitude (world Y, positive down, never wrapped).
+        // height above the terrain below the ship (positive up).
         if (_state.ShowCoords)
         {
+            int groundAltitude = _landscape.GetAltitude(_state.XPlayer, _state.ZPlayer);
             SystemFont.DrawString(screenBuf, stride, 40, 8,
-                CoordDisplay.FormatHud(_state.XPlayer, _state.ZPlayer, _state.YPlayer), white);
+                CoordDisplay.FormatHud(_state.XPlayer, _state.ZPlayer, _state.YPlayer, groundAltitude), white);
         }
     }
 

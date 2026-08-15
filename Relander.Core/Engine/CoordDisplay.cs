@@ -40,11 +40,13 @@ public static class CoordDisplay
     /// <summary>
     /// Full HUD line in player-facing terms: X is the east-west ground axis
     /// (world X), Y is the other ground axis (world Z — displayed as Y since
-    /// players read ground axes as X/Y), and Alt is the altitude (world Y).
+    /// players read ground axes as X/Y), and Alt is the height above the
+    /// terrain directly below the ship (ground altitude minus ship Y — the
+    /// world's Y grows downward, so this reads positive when airborne).
     /// The ground axes wrap with the periodic world; Alt never wraps.
     /// </summary>
-    public static string FormatHud(int groundX, int groundZ, int altitude) =>
-        $"X {FormatCoord(groundX)} Y {FormatCoord(groundZ)} Alt {FormatAltitude(altitude)}";
+    public static string FormatHud(int groundX, int groundZ, int yFixed, int groundAltitude) =>
+        $"X {FormatCoord(groundX)} Y {FormatCoord(groundZ)} Alt {FormatAltitude(groundAltitude - yFixed)}";
 
     private static string FormatTileAndTenths(int tile, int value)
     {
