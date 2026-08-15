@@ -113,6 +113,31 @@ public class ViewWidthTests
             $"+3-per-side view should add pixels in the side bands (original {countOrig}, extended {countExt})");
     }
 
+    // ---- Left-edge clipping ----
+
+    [Test]
+    public void ExtendedWidth_TilesCrossingTheLeftEdgeAreDrawn()
+    {
+        // With +4 columns per side the front row corners project to x ≈ -186
+        // at the left; the original clips such tiles at the screen edge (the
+        // missing-corner sentinel is 0x80000000, not a negative x). The port
+        // once skipped any tile with a negative-x corner, leaving a hole at
+        // the left edge — this region must be filled with landscape.
+        var screen = new TestScreen();
+        var engine = new GameEngine(new RandomGenerator(4242), screen, new ViewConfig(0, 4));
+        engine.StartNewGame();
+        engine.Update(new TestInput());
+
+        var fb = screen.GetFramebuffer();
+        int filled = 0;
+        for (int y = 190; y <= 235; y++)
+            for (int x = 0; x <= 18; x++)
+                if (fb[(y + 16) * 320 + x] != 0) filled++;
+
+        Assert.That(filled, Is.GreaterThan(0),
+            "tiles whose corners cross the left screen edge must be drawn and clipped, not skipped");
+    }
+
     // ---- Runtime toggle API ----
 
     [Test]

@@ -391,7 +391,11 @@ public class GameEngine
                 // Project using the landscape row z (NOT worldZ - zCamera)
                 if (!Projection.Project(relX, relY, projZ, out int sx, out int sy))
                 {
-                    _curRowCorners[col] = (-1, -1);
+                    // Missing-corner sentinel: 0x80000000, as in the original
+                    // (Lander.arm stores the sentinel in the corner store). The
+                    // previous (-1, -1) collided with valid corners that project
+                    // off-screen left, which then got skipped below.
+                    _curRowCorners[col] = (int.MinValue, int.MinValue);
                     continue;
                 }
                 _curRowCorners[col] = (sx, sy);
@@ -404,7 +408,12 @@ public class GameEngine
                     var c01 = _curRowCorners[col - 1];
                     var c11 = _curRowCorners[col];
 
-                    if (c00.x < 0 || c10.x < 0 || c01.x < 0 || c11.x < 0) continue;
+                    // Skip only genuinely missing corners (the original's
+                    // 0x80000000 sentinel). Corners off-screen left are valid
+                    // and the rasterizer clips them at x=0, matching the
+                    // original's DrawTriangle left-edge clipping.
+                    if (c00.x == int.MinValue || c10.x == int.MinValue ||
+                        c01.x == int.MinValue || c11.x == int.MinValue) continue;
 
                     // Brightness row: the original ramp only covers rows 0-10
                     // counting from the original back edge. The extension rows
