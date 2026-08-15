@@ -32,7 +32,33 @@ public class WidescreenTests
         });
     }
 
-    // ---- (ii) The wide frame renders beyond x = 319 ----
+    // ---- (ii) The title is centred ----
+
+    [Test]
+    public void WideFrame_TitleIsCentred()
+    {
+        var screen = new TestScreen(456, 256);
+        var engine = new GameEngine(new RandomGenerator(1), screen);
+        engine.StartNewGame();
+        engine.Update(new TestInput());
+
+        var fb = screen.GetFramebuffer();
+
+        // The title is exactly 40 chars = 320 px, so centring gives
+        // x = (456 - 320) / 2 = 68; the left margin must be empty.
+        for (int x = 4; x <= 63; x++)
+        {
+            Assert.That(fb[0 * 456 + x], Is.EqualTo((byte)0),
+                $"pixel ({x},0) should be empty left margin of the centred title");
+        }
+        int titlePixels = 0;
+        for (int x = 68; x <= 76; x++)
+            if (fb[0 * 456 + x] != 0) titlePixels++;
+        Assert.That(titlePixels, Is.GreaterThan(0),
+            "the title text should start at the centred position x=68");
+    }
+
+    // ---- (iii) The wide frame renders beyond x = 319 ----
 
     [Test]
     public void WideFrame_RendersBeyondOriginalWidth()

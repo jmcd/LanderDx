@@ -521,9 +521,12 @@ public class GameEngine
 
         // 0. Title on text row 0 (Lander.arm:12157-12161, 12191-12195): the
         // original prints it to both banks at entry and it remains for the
-        // whole game.
-        SystemFont.DrawString(screenBuf, stride, 0, 0,
-            "Lander Demo/Practice (C) D.J.Braben 1987",
+        // whole game. Centred horizontally: the title is exactly 40 chars
+        // (320 px), so at the original width this reproduces x = 0 exactly
+        // and only shifts it on wider screens.
+        const string title = "Lander Demo/Practice (C) D.J.Braben 1987";
+        int titleX = (_playWidth - title.Length * SystemFont.CHAR_WIDTH) / 2;
+        SystemFont.DrawString(screenBuf, stride, titleX, 0, title,
             VidcColour.Encode(15, 15, 15));
 
         // 1. Fuel level bar at the top of the play area: screen rows 17-19
