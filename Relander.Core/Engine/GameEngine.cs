@@ -17,7 +17,7 @@ public class GameEngine
     private readonly IScreen _screen;
 
     private readonly ViewConfig _viewConfig;
-
+ 
     private readonly LandscapeGenerator _landscape;
     private readonly ObjectMap _objectMap;
     private readonly PlayerController _player;
@@ -530,6 +530,7 @@ public class GameEngine
                            + global::System.Math.Abs(_state.YVelocity)
                            + global::System.Math.Abs(_state.ZVelocity);
             bool overPad = CoordDisplay.IsOverPad(_state.XPlayer, _state.ZPlayer);
+            bool noseSafe = CoordDisplay.IsNoseSafe(_state.ShipPitch);
 
             // Panel box: black interior with a white border frame, x 0..103,
             // screen rows 20..59 (top-left of the play area, opposite the
@@ -552,7 +553,9 @@ public class GameEngine
             SystemFont.DrawString(screenBuf, stride, 2, 30,
                 CoordDisplay.FormatPadLine(overPad), white);
             SystemFont.DrawString(screenBuf, stride, 2, 38,
-                CoordDisplay.FormatLandCue(overPad, totalSpeed), white);
+                CoordDisplay.FormatNoseLine(noseSafe), white);
+            SystemFont.DrawString(screenBuf, stride, 2, 46,
+                CoordDisplay.FormatLandCue(overPad, totalSpeed, noseSafe), white);
         }
     }
 

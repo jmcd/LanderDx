@@ -98,9 +98,25 @@ public class CoordDisplayTests
         Assert.That(CoordDisplay.FormatSpeedLine(FixedPoint.LANDING_SPEED), Is.EqualTo("SPD 0.12 !"));
         Assert.That(CoordDisplay.FormatPadLine(true), Is.EqualTo("PAD IN"));
         Assert.That(CoordDisplay.FormatPadLine(false), Is.EqualTo("PAD OUT"));
-        Assert.That(CoordDisplay.FormatLandCue(true, FixedPoint.LANDING_SPEED - 1), Is.EqualTo("LAND OK"));
-        Assert.That(CoordDisplay.FormatLandCue(true, FixedPoint.LANDING_SPEED), Is.EqualTo("LAND -"));
-        Assert.That(CoordDisplay.FormatLandCue(false, 0), Is.EqualTo("LAND -"));
+        Assert.That(CoordDisplay.FormatNoseLine(true), Is.EqualTo("NOSE OK"));
+        Assert.That(CoordDisplay.FormatNoseLine(false), Is.EqualTo("NOSE DN"));
+        Assert.That(CoordDisplay.FormatLandCue(true, FixedPoint.LANDING_SPEED - 1, true), Is.EqualTo("LAND OK"));
+        Assert.That(CoordDisplay.FormatLandCue(true, FixedPoint.LANDING_SPEED, true), Is.EqualTo("LAND -"));
+        Assert.That(CoordDisplay.FormatLandCue(true, FixedPoint.LANDING_SPEED - 1, false), Is.EqualTo("LAND -"),
+            "a tilted nose must veto the LAND cue");
+        Assert.That(CoordDisplay.FormatLandCue(false, 0, true), Is.EqualTo("LAND -"));
+    }
+
+    [Test]
+    public void IsNoseSafe_TightPitchWindowAroundLevel()
+    {
+        // Level (the launchpad pitch) is safe; the nose vertices sit at
+        // (1.0, 0.31) tiles, so a few degrees of pitch dig them below the pad
+        // surface before the centre reaches touchdown.
+        Assert.That(CoordDisplay.IsNoseSafe(1), Is.True, "level pitch must be safe");
+        // 5.625 degrees nose-down: nose offset = sin + 0.3125·cos ≈ 0.41 tiles
+        Assert.That(CoordDisplay.IsNoseSafe(0x04000000), Is.False, "nose-down must be unsafe");
+        Assert.That(CoordDisplay.IsNoseSafe(-0x04000000), Is.False, "nose-up must be unsafe");
     }
 
     // ---- Integration: toggle changes only the HUD text region ----

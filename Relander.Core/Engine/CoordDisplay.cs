@@ -1,4 +1,5 @@
 using Relander.Core.Math;
+using Relander.Core.Data;
 
 namespace Relander.Core.Engine;
 
@@ -82,7 +83,36 @@ public static class CoordDisplay
     public static string FormatPadLine(bool overPad) => overPad ? "PAD IN" : "PAD OUT";
 
     /// <summary>The landing panel's cue line: "LAND OK" when the descent would
-    /// land safely (over the pad and below the speed limit), "LAND -" otherwise.</summary>
-    public static string FormatLandCue(bool overPad, int totalSpeed) =>
-        overPad && IsLandingSpeed(totalSpeed) ? "LAND OK" : "LAND -";
+    /// land safely (over the pad, below the speed limit and with the nose high
+    /// enough not to dig in), "LAND -" otherwise.</summary>
+    public static string FormatLandCue(bool overPad, int totalSpeed, bool noseSafe) =>
+        overPad && IsLandingSpeed(totalSpeed) && noseSafe ? "LAND OK" : "LAND -";
+
+    /// <summary>
+    /// True when the ship's orientation is safe for touchdown. At the landing
+    /// snap the centre rests at LAUNCHPAD_Y with only UNDERCARRIAGE_Y of
+    /// clearance, and the vertex-vs-ground crash test (Lander.arm:5246-5259)
+    /// explodes the ship if any vertex is below the pad surface. That happens
+    /// when the lowest vertex offset (max over vertices of vx·sin(pitch) +
+    /// vy·cos(pitch)) reaches the undercarriage height — the nose vertices sit
+    /// at (1.0, 0.31) tiles, so a few degrees of nose-down pitch already digs
+    /// in. This is an aid, not the crash test itself; the sign of the check is
+    /// identical (vertex world Y below the flat pad surface).
+    /// </summary>
+    public static bool IsNoseSafe(int shipPitch)
+    {
+        int sin = SineTable.Data[((uint)shipPitch >> 22) & 0x3FF];
+        int cos = SineTable.Data[((uint)(shipPitch + 0x40000000) >> 22) & 0x3FF];
+
+        long maxOffset = long.MinValue;
+        foreach (var v in ObjectBlueprints.PlayerShip.Vertices)
+        {
+            long offset = ((long)v.X * sin + (long)v.Y * cos) >> 31;  // fixed-point product
+            if (offset > maxOffset) maxOffset = offset;
+        }
+        return maxOffset < FixedPoint.UNDERCARRIAGE_Y;
+    }
+
+    /// <summary>The landing panel's nose line, e.g. "NOSE OK" or "NOSE DN".</summary>
+    public static string FormatNoseLine(bool noseSafe) => noseSafe ? "NOSE OK" : "NOSE DN";
 }
