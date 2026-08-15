@@ -229,11 +229,11 @@ public class ViewDepthTests
         Assert.That(engine.ExtraDepthTiles, Is.EqualTo(0));
 
         engine.CycleViewDepth();
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(10));
+        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(4));
         engine.CycleViewDepth();
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(20));
+        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(8));
         engine.CycleViewDepth();
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(30));
+        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(12));
         engine.CycleViewDepth();
         Assert.That(engine.ExtraDepthTiles, Is.EqualTo(0));
 

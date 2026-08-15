@@ -123,11 +123,11 @@ public class ViewWidthTests
         Assert.That(engine.ExtraWidthCols, Is.EqualTo(0));
 
         engine.CycleViewWidth();
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(2));
-        engine.CycleViewWidth();
         Assert.That(engine.ExtraWidthCols, Is.EqualTo(4));
         engine.CycleViewWidth();
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(6));
+        Assert.That(engine.ExtraWidthCols, Is.EqualTo(8));
+        engine.CycleViewWidth();
+        Assert.That(engine.ExtraWidthCols, Is.EqualTo(12));
         engine.CycleViewWidth();
         Assert.That(engine.ExtraWidthCols, Is.EqualTo(0));
     }
@@ -159,10 +159,11 @@ public class ViewWidthTests
         var engine = new GameEngine(new RandomGenerator(4242), screen);
         engine.StartNewGame();
 
-        engine.SetExtraDepth(10);
-        engine.SetExtraWidth(2);
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(10));
-        Assert.That(engine.ExtraWidthCols, Is.EqualTo(2));
+        // Exercise the largest preset grid: +12 rows and +12 columns per side.
+        engine.SetExtraDepth(12);
+        engine.SetExtraWidth(12);
+        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(12));
+        Assert.That(engine.ExtraWidthCols, Is.EqualTo(12));
 
         engine.Update(new TestInput());  // must not throw; buffers must not overflow (Debug.Assert)
 
