@@ -18,9 +18,13 @@ public class GameEngine
 
     private ViewConfig _viewConfig;
     private int _viewDepthIndex;
+    private int _viewWidthIndex;
 
     /// <summary>View depth presets cycled by the C key (extra tile rows beyond the original grid).</summary>
     private static readonly int[] ViewDepthPresets = { 0, 10, 20, 30 };
+
+    /// <summary>View width presets cycled by the X key (extra tile columns per side).</summary>
+    private static readonly int[] ViewWidthPresets = { 0, 2, 4, 6 };
 
     private readonly LandscapeGenerator _landscape;
     private readonly ObjectMap _objectMap;
@@ -36,20 +40,41 @@ public class GameEngine
     public GameState State => _state;
     public LandscapeGenerator Landscape => _landscape;
     public ObjectMap ObjectMap => _objectMap;
+    public ParticleSystem Particles => _particles;
 
     /// <summary>Current number of extra view-depth rows (0 = original view).</summary>
     public int ExtraDepthTiles => _viewConfig.ExtraDepthTiles;
 
+    /// <summary>Current number of extra view-width columns per side (0 = original view).</summary>
+    public int ExtraWidthCols => _viewConfig.ExtraWidthCols;
+
     /// <summary>
-    /// Set the extended view depth (0 = original). Must be called between
-    /// frames — it rebuilds the graphics buffers in place, dropping in-flight
+    /// Re-apply the view configuration to the subsystems that hold a copy of it
+    /// (graphics buffers, particle side-culling, corner stores). Must be called
+    /// between frames — the buffers are rebuilt in place, dropping in-flight
     /// commands.
     /// </summary>
-    public void SetExtraDepth(int extraDepthTiles)
+    private void ApplyViewConfig()
     {
-        _viewConfig = new ViewConfig(extraDepthTiles);
         _buffers.Resize(_viewConfig.GraphicsBufferCount,
             _viewConfig.LandscapeZ, _viewConfig.LandscapeZDepth, _viewConfig.LandscapeZBeyond);
+        _particles.LandscapeXHalf = _viewConfig.LandscapeXHalf;
+        _prevRowCorners = new (int, int)[_viewConfig.TilesX];
+        _curRowCorners = new (int, int)[_viewConfig.TilesX];
+    }
+
+    /// <summary>Set the extended view depth (0 = original), keeping the width.</summary>
+    public void SetExtraDepth(int extraDepthTiles)
+    {
+        _viewConfig = new ViewConfig(extraDepthTiles, _viewConfig.ExtraWidthCols);
+        ApplyViewConfig();
+    }
+
+    /// <summary>Set the extended view width in columns per side (0 = original), keeping the depth.</summary>
+    public void SetExtraWidth(int extraWidthCols)
+    {
+        _viewConfig = new ViewConfig(_viewConfig.ExtraDepthTiles, extraWidthCols);
+        ApplyViewConfig();
     }
 
     /// <summary>
@@ -62,11 +87,22 @@ public class GameEngine
         SetExtraDepth(ViewDepthPresets[_viewDepthIndex]);
     }
 
+    /// <summary>
+    /// Cycle the view width presets: original → +2 → +4 → +6 columns per side
+    /// → original (X key, opt-in like the depth extension).
+    /// </summary>
+    public void CycleViewWidth()
+    {
+        _viewWidthIndex = (_viewWidthIndex + 1) % ViewWidthPresets.Length;
+        SetExtraWidth(ViewWidthPresets[_viewWidthIndex]);
+    }
+
     public GameEngine(IRandomSource random, IScreen screen, ViewConfig? viewConfig = null)
     {
         _state = new GameState();
         _viewConfig = viewConfig ?? new ViewConfig(0);
         _viewDepthIndex = global::System.Math.Max(0, Array.IndexOf(ViewDepthPresets, _viewConfig.ExtraDepthTiles));
+        _viewWidthIndex = global::System.Math.Max(0, Array.IndexOf(ViewWidthPresets, _viewConfig.ExtraWidthCols));
         _buffers = new GraphicsBuffers(_viewConfig.GraphicsBufferCount, FixedPoint.BUFFER_SIZE / 4,
             _viewConfig.LandscapeZ, _viewConfig.LandscapeZDepth, _viewConfig.LandscapeZBeyond);
         _random = random;
@@ -80,8 +116,8 @@ public class GameEngine
         _framebuffer = new byte[320 * 240];
         _rasterizer = new TriangleRasterizer(_framebuffer);
 
-        _prevRowCorners = new (int, int)[FixedPoint.TILES_X];
-        _curRowCorners = new (int, int)[FixedPoint.TILES_X];
+        _prevRowCorners = new (int, int)[_viewConfig.TilesX];
+        _curRowCorners = new (int, int)[_viewConfig.TilesX];
     }
 
     public void StartNewGame()
@@ -237,9 +273,12 @@ public class GameEngine
         for (int tz = -_viewConfig.ExtraDepthTiles; tz < FixedPoint.TILES_Z; tz++)
         {
             int worldZ = (camTileZ - tz * FixedPoint.TILE_SIZE) & unchecked((int)0xFF000000);
-            for (int tx = 0; tx < FixedPoint.TILES_X; tx++)
+            // tx - ExtraWidthCols keeps the original columns at their exact
+            // world positions; the extra columns widen the window each side.
+            for (int tx = 0; tx < _viewConfig.TilesX; tx++)
             {
-                int worldX = (camTileX + tx * FixedPoint.TILE_SIZE) & unchecked((int)0xFF000000);
+                int worldX = (camTileX + (tx - _viewConfig.ExtraWidthCols) * FixedPoint.TILE_SIZE)
+                    & unchecked((int)0xFF000000);
                 int objType = _objectMap.GetObjectAt(worldX, worldZ);
                 if (objType == ObjectTypes.NO_OBJECT) continue;
 
@@ -316,10 +355,13 @@ public class GameEngine
             // Projection z for this row (decreases by TILE_SIZE each row toward front)
             int projZ = zRow;
 
-            // For each tile corner column (left to right)
-            for (int col = 0; col < FixedPoint.TILES_X; col++)
+            // For each tile corner column (left to right). The extended width
+            // adds ExtraWidthCols columns on each side; col 0..TILES_X-1 keep
+            // their exact world positions (worldX = startX + (col - M) * TILE_SIZE
+            // degenerates to the original expression when M = 0).
+            for (int col = 0; col < _viewConfig.TilesX; col++)
             {
-                int worldX = startX + col * FixedPoint.TILE_SIZE;
+                int worldX = startX + (col - _viewConfig.ExtraWidthCols) * FixedPoint.TILE_SIZE;
                 int worldZ = worldZBase;
 
                 // Get altitude at this corner (using world coordinates)

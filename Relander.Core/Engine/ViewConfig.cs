@@ -24,20 +24,38 @@ public sealed class ViewConfig
     /// 128 tiles, the projection's "too far away" rejection bound.</summary>
     public const int MAX_EXTRA_DEPTH_TILES = 100;
 
+    /// <summary>Maximum extra tile columns per side (bounds corner-store size and
+    /// per-frame triangle cost; the rasterizer clips anything off-screen anyway).</summary>
+    public const int MAX_EXTRA_WIDTH_COLS = 16;
+
     /// <summary>Extra tile-corner rows added at the far end of the grid (0 = original view).</summary>
     public int ExtraDepthTiles { get; }
 
-    public ViewConfig(int extraDepthTiles)
+    /// <summary>Extra tile columns added on each side of the grid (0 = original view).</summary>
+    public int ExtraWidthCols { get; }
+
+    public ViewConfig(int extraDepthTiles, int extraWidthCols = 0)
     {
         if (extraDepthTiles < 0 || extraDepthTiles > MAX_EXTRA_DEPTH_TILES)
             throw new ArgumentOutOfRangeException(nameof(extraDepthTiles), extraDepthTiles,
                 $"Extra depth rows must be in [0, {MAX_EXTRA_DEPTH_TILES}] " +
                 "(back edge 20 + N tiles must stay below the projection's 128-tile rejection bound).");
+        if (extraWidthCols < 0 || extraWidthCols > MAX_EXTRA_WIDTH_COLS)
+            throw new ArgumentOutOfRangeException(nameof(extraWidthCols), extraWidthCols,
+                $"Extra width columns must be in [0, {MAX_EXTRA_WIDTH_COLS}] per side.");
         ExtraDepthTiles = extraDepthTiles;
+        ExtraWidthCols = extraWidthCols;
     }
 
     /// <summary>Number of tile corners per row from back to front (11 + N).</summary>
     public int TilesZ => FixedPoint.TILES_Z + ExtraDepthTiles;
+
+    /// <summary>Number of tile corners per row from left to right (13 + 2M, M per side).</summary>
+    public int TilesX => FixedPoint.TILES_X + 2 * ExtraWidthCols;
+
+    /// <summary>Half-width of the visible landscape (6 + M tiles), used by the
+    /// particle/rock side culling.</summary>
+    public int LandscapeXHalf => FixedPoint.LANDSCAPE_X_HALF + ExtraWidthCols * FixedPoint.TILE_SIZE;
 
     /// <summary>Projection z of the back row (20 + N tiles).</summary>
     public int LandscapeZ => FixedPoint.LANDSCAPE_Z + ExtraDepthTiles * FixedPoint.TILE_SIZE;

@@ -49,6 +49,12 @@ public class ParticleSystem
         _data[P_FLAGS] = 0;  // Null terminator
     }
 
+    /// <summary>
+    /// Half-width of the visible landscape for the side culling. Defaults to the
+    /// original value; the extended view width overrides it (updated on toggle).
+    /// </summary>
+    public int LandscapeXHalf { get; set; } = FixedPoint.LANDSCAPE_X_HALF;
+
     public int Count => _endIndex;
 
     /// <summary>Read-only snapshot of a particle's data (for tests and diagnostics).</summary>
@@ -266,7 +272,7 @@ public class ParticleSystem
             // Visibility culling
             if ((uint)rockObjZ >= (uint)FixedPoint.LANDSCAPE_Z) return;
             if (rockObjZ < FixedPoint.LANDSCAPE_Z_FRONT) return;
-            if (global::System.Math.Abs(rockObjX) >= FixedPoint.LANDSCAPE_X_HALF) return;
+            if (global::System.Math.Abs(rockObjX) >= LandscapeXHalf) return;
 
             ObjectRenderer.DrawObject(ObjectBlueprints.Rock, rockObjX, rockObjY, rockObjZ, x, z, _state, _buffers, _landscape);
             return;
@@ -280,7 +286,7 @@ public class ParticleSystem
         // Visibility culling: particle must be between front and back of visible landscape
         if ((uint)cz >= (uint)FixedPoint.LANDSCAPE_Z) return;       // Too far back
         if (cz < FixedPoint.LANDSCAPE_Z_FRONT) return;              // Too close
-        if (global::System.Math.Abs(cx) >= FixedPoint.LANDSCAPE_X_HALF) return;  // Off left/right
+        if (global::System.Math.Abs(cx) >= LandscapeXHalf) return;  // Off left/right
 
         // Project to screen
         if (!Projection.Project(cx, cy, cz, out int screenX, out int screenY))

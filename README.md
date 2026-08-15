@@ -70,7 +70,7 @@ Relander.Core/
     LandscapeGenerator.cs — Fourier synthesis + tile colours (Lander.arm:1285–1724)
     VidcColour.cs         — VIDC 8-bit colour encode/decode (Lander.arm:3908–3947)
     GraphicsBuffers.cs    — 12 depth-sorted command buffers (Lander.arm:8904–9038)
-    ViewConfig.cs         — Optional view-depth configuration (extra depth rows)
+    ViewConfig.cs         — Optional view-size configuration (extra depth rows, width columns)
     Projection.cs         — Perspective projection (Lander.arm:7119–7492)
     TriangleRasterizer.cs — Scanline triangle fill (Lander.arm:9278–11502)
     ObjectMap.cs          — 256×256 object placement (Lander.arm:12276–12413)
@@ -303,6 +303,7 @@ Keyboard controls (mapped from the original's mouse):
 | H | Hover |
 | N | Fire bullets |
 | C | Cycle view depth (Original → +10 → +20 → +30 extra rows) |
+| X | Cycle view width (Original → +2 → +4 → +6 extra columns per side) |
 | Escape | Quit |
 
 ### Screen Layout
@@ -319,5 +320,6 @@ The conversion uses a single `byte[320×256]` framebuffer. The top 16 pixel rows
 4. **Game over**: The original blocks until a key press before restarting; the port shows the same message and waits for a key
 5. **Minimap**: A Zarch/Virus-inspired radar overlay (Tab/R to toggle) has no original counterpart
 6. **View depth**: An opt-in deviation — pressing C cycles the visible landscape depth (Original → +10 → +20 → +30 extra tile-corner rows). The extra far rows sample terrain behind the camera tile and use the darkest brightness shade, the same fix as the original's BigLander variant (Lander.arm `big-landscape` branch: `SUBS R8, R8, #TILES_Z-11` / `MOVLT R8, #0`). The default is the original 11-corner-row view and extended modes are never enabled without the key; the original rows render identically in every mode
+7. **View width**: An opt-in deviation — pressing X cycles the visible landscape width (Original → +2 → +4 → +6 extra tile columns per side). The extra columns keep the original columns at their exact world positions, and the particle/rock side-culling bound follows the extended width. The two extensions are independent and combine freely
 
 

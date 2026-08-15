@@ -7,6 +7,7 @@ public class RaylibInput : IGameInput
 {
     private bool _toggleMapLatched = false;
     private bool _viewDepthLatched = false;
+    private bool _viewWidthLatched = false;
 
     /// <summary>
     /// Must be called every frame of the Raylib window loop (60 Hz) to latch
@@ -21,6 +22,10 @@ public class RaylibInput : IGameInput
         if (Raylib.IsKeyPressed(KeyboardKey.C))
         {
             _viewDepthLatched = true;
+        }
+        if (Raylib.IsKeyPressed(KeyboardKey.X))
+        {
+            _viewWidthLatched = true;
         }
     }
 
@@ -53,6 +58,17 @@ public class RaylibInput : IGameInput
     {
         bool val = _viewDepthLatched || Raylib.IsKeyPressed(KeyboardKey.C);
         _viewDepthLatched = false;
+        return val;
+    }
+
+    /// <summary>
+    /// Cycle view width (key X): latched across display frames like the depth
+    /// toggle. Consumed by the frontend (presentation option, not game state).
+    /// </summary>
+    public bool ConsumeViewWidthToggle()
+    {
+        bool val = _viewWidthLatched || Raylib.IsKeyPressed(KeyboardKey.X);
+        _viewWidthLatched = false;
         return val;
     }
 
