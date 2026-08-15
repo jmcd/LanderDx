@@ -46,8 +46,10 @@ public class CoordDisplayTests
     [Test]
     public void FormatHud_AllThreeAxes()
     {
-        Assert.That(CoordDisplay.FormatHud(0x04A00000, 0x02800000, -0x00800000),
-            Is.EqualTo("X 4.6 Y 2.5 Z 255.5"));
+        // Player-facing labels: X = ground east-west, Y = ground north-south
+        // (world Z), Alt = altitude (world Y)
+        Assert.That(CoordDisplay.FormatHud(0x04A00000, -0x00800000, 0x02800000),
+            Is.EqualTo("X 4.6 Y 255.5 Alt 2.5"));
     }
 
     [Test]
@@ -84,10 +86,10 @@ public class CoordDisplayTests
         var fbOff = screenOff.GetFramebuffer();
         var fbOn = screenOn.GetFramebuffer();
 
-        // The coords draw at score-bar row 1 (screen y 8..15), x = 48, and the
-        // three-axis text is at most 24 chars (192 px, ending just before the
-        // lives counter at x=240). Everything outside the box must be
-        // byte-identical; inside, the text must actually appear.
+        // The coords draw at score-bar row 1 (screen y 8..15), x = 40, and the
+        // three-axis text is at most 25 chars (200 px, ending at x=239 just
+        // before the lives counter at x=240). Everything outside the box must
+        // be byte-identical; inside, the text must actually appear.
         int differingInside = 0;
         for (int y = 0; y < 256; y++)
         {

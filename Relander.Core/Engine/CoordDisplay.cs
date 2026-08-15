@@ -37,9 +37,14 @@ public static class CoordDisplay
         return $"-{tile}.{tenths}";
     }
 
-    /// <summary>Full HUD line: ship coordinates on all three axes (Y is the raw, unwrapped altitude).</summary>
-    public static string FormatHud(int xFixed, int yFixed, int zFixed) =>
-        $"X {FormatCoord(xFixed)} Y {FormatAltitude(yFixed)} Z {FormatCoord(zFixed)}";
+    /// <summary>
+    /// Full HUD line in player-facing terms: X is the east-west ground axis
+    /// (world X), Y is the other ground axis (world Z — displayed as Y since
+    /// players read ground axes as X/Y), and Alt is the altitude (world Y).
+    /// The ground axes wrap with the periodic world; Alt never wraps.
+    /// </summary>
+    public static string FormatHud(int groundX, int groundZ, int altitude) =>
+        $"X {FormatCoord(groundX)} Y {FormatCoord(groundZ)} Alt {FormatAltitude(altitude)}";
 
     private static string FormatTileAndTenths(int tile, int value)
     {
