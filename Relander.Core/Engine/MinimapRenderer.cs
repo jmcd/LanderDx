@@ -95,7 +95,7 @@ public static class MinimapRenderer
 
         if (state.MapMode == 0)
         {
-            // Mode 0: Inset Mini-Map (64x64 pixels in top-right corner, x=252..315, y=16..79)
+            // Mode 0: Inset Mini-Map (64x64 pixels in the top-right corner, anchored to the screen width)
             RenderInsetMap(screenBuf, stride, state);
         }
         else if (state.MapMode == 1)
@@ -107,7 +107,7 @@ public static class MinimapRenderer
 
     private static void RenderInsetMap(Span<byte> screenBuf, int stride, GameState state)
     {
-        int startX = 252;
+        int startX = stride - 68;  // 252 at the original 320 width, 388 at 456
         int startY = 22; // 6-pixel gap below top HUD score bar text (top border at y=21)
         int size = 64;
 
@@ -123,7 +123,7 @@ public static class MinimapRenderer
             for (int x = -1; x <= size; x++)
             {
                 int screenX = startX + x;
-                if (screenX < 0 || screenX >= 320) continue;
+                if (screenX < 0 || screenX >= stride) continue;
 
                 if (x == -1 || x == size || y == -1 || y == size)
                 {
@@ -163,7 +163,7 @@ public static class MinimapRenderer
 
     private static void RenderFullMap(Span<byte> screenBuf, int stride, GameState state)
     {
-        int startX = 32; // Center 256px wide map in 320px screen width
+        int startX = (stride - 256) / 2; // Center the 256px wide map in the screen width (32 at 320, 100 at 456)
 
         // Draw 1px per tile directly from 256x256 cache.
         // Flip z: far (+z) at the top, matching the 3D view's horizon.
@@ -193,7 +193,7 @@ public static class MinimapRenderer
 
     private static void DrawDot(Span<byte> screenBuf, int stride, int x, int y, byte color)
     {
-        if ((uint)x < 320 && (uint)y < 256)
+        if ((uint)x < stride && (uint)y < 256)
         {
             screenBuf[y * stride + x] = color;
         }

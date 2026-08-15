@@ -32,6 +32,8 @@ public class GameEngine
     private readonly ParticleSystem _particles;
     private readonly TriangleRasterizer _rasterizer;
     private readonly byte[] _framebuffer;
+    private readonly int _playWidth;
+    private readonly int _playHeight;
 
     // Landscape rendering state
     private (int x, int y)[] _prevRowCorners;  // Projected corners from the previous row
@@ -121,8 +123,14 @@ public class GameEngine
         _player = new PlayerController(_state, _buffers, _landscape, _objectMap);
         _particles = new ParticleSystem(_state, _landscape, _objectMap, _buffers, _random);
 
-        _framebuffer = new byte[320 * 240];
-        _rasterizer = new TriangleRasterizer(_framebuffer);
+        // Play area: the full screen minus the 16-row score bar (320×240 in
+        // the original; the --widescreen frontend passes a 456×256 screen).
+        _playWidth = screen.Width;
+        _playHeight = screen.Height - FixedPoint.SCORE_BAR_HEIGHT;
+        Viewport.Configure(_playWidth, _playHeight);
+
+        _framebuffer = new byte[_playWidth * _playHeight];
+        _rasterizer = new TriangleRasterizer(_framebuffer, _playWidth, _playHeight);
 
         _prevRowCorners = new (int, int)[_viewConfig.TilesX];
         _curRowCorners = new (int, int)[_viewConfig.TilesX];
@@ -155,8 +163,9 @@ public class GameEngine
             CopyToScreen();
             RenderScoreBar();
             var gameOverBuf = _screen.GetFramebuffer();
-            SystemFont.DrawString(gameOverBuf, _screen.Width, 8, 128,
-                "GAME OVER - press a key to start again",
+            const string msg = "GAME OVER - press a key to start again";
+            int msgX = (_playWidth - msg.Length * SystemFont.CHAR_WIDTH) / 2;  // 8 at 320, centred when wide
+            SystemFont.DrawString(gameOverBuf, _screen.Width, msgX, 128, msg,
                 VidcColour.Encode(15, 15, 15));
             if (input.AnyKeyPressed)
                 StartNewGame();
@@ -493,8 +502,8 @@ public class GameEngine
                     for (int dx = 0; dx < w; dx++)
                     {
                         int sx = px + startDx + dx, sy = py + startDy + dy;
-                        if ((uint)sx < 320 && (uint)sy < 240)
-                            _framebuffer[sy * 320 + sx] = colour;
+                        if ((uint)sx < _playWidth && (uint)sy < _playHeight)
+                            _framebuffer[sy * _playWidth + sx] = colour;
                     }
                 i += 2;
             }
@@ -523,7 +532,7 @@ public class GameEngine
         // the fuelBarColour &37373737 (EQUD at Lander.arm:5829-5831). The
         // previous orange bar at rows 2-4 sat inside the HUD instead.
         int fuelPixels = _state.FuelLevel >> 4;
-        if (fuelPixels > 320) fuelPixels = 320;
+        if (fuelPixels > _playWidth) fuelPixels = _playWidth;
         byte fuelColor = 0x37;
         int len = global::System.Math.Min(fuelPixels, stride);
         if (len > 0)
@@ -544,11 +553,11 @@ public class GameEngine
 
         // Col 30 (x = 240): Remaining lives
         string livesStr = _state.RemainingLives.ToString();
-        SystemFont.DrawString(screenBuf, stride, 240, 8, livesStr, white);
+        SystemFont.DrawString(screenBuf, stride, _playWidth - 80, 8, livesStr, white);
 
         // Col 35 (x = 280): High score
         string highStr = _state.HighScore.ToString();
-        SystemFont.DrawString(screenBuf, stride, 280, 8, highStr, white);
+        SystemFont.DrawString(screenBuf, stride, _playWidth - 40, 8, highStr, white);
 
         // 3. Coordinate display (P key, opt-in — no original counterpart): ship
         // position in the empty middle of text row 1, in player-facing terms —
@@ -571,11 +580,11 @@ public class GameEngine
         // Clear top 16 rows (score bar HUD area, y = 0..15)
         screenBuf.Slice(0, 16 * stride).Clear();
 
-        // Copy 240-row 3D play area to rows 16..255 of screen buffer
-        for (int y = 0; y < 240; y++)
+        // Copy the play area to rows 16..255 of the screen buffer
+        for (int y = 0; y < _playHeight; y++)
         {
-            _framebuffer.AsSpan(y * 320, global::System.Math.Min(320, stride))
-                .CopyTo(screenBuf.Slice((y + 16) * stride, global::System.Math.Min(320, stride)));
+            _framebuffer.AsSpan(y * _playWidth, _playWidth)
+                .CopyTo(screenBuf.Slice((y + FixedPoint.SCORE_BAR_HEIGHT) * stride, _playWidth));
         }
     }
 

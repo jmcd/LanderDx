@@ -6,10 +6,6 @@ namespace Relander;
 
 public static class Program
 {
-    private const int SCALE = 4;
-    private const int GAME_WIDTH = 320;
-    private const int GAME_HEIGHT = 256;
-
     // The original Archimedes ARM2 completed one game frame in approximately
     // 4 VSync periods (4 × 20 ms at 50 Hz PAL) = 80 ms ≈ 12.5 FPS.
     // This constant drives the fixed-step accumulator so game logic runs at the
@@ -17,16 +13,25 @@ public static class Program
     private const double TARGET_GAME_FPS = 12.5;
     private const double GAME_FRAME_SECONDS = 1.0 / TARGET_GAME_FPS;
 
-    public static void Main()
+    public static void Main(string[] args)
     {
+        // --widescreen (opt-in, startup only): 456×256 framebuffer (16:9) with a
+        // 456×240 play area, at 3× scale (1368×768 — 4× would give 1824×1024,
+        // too tight on common 1080p desktops). The default is the untouched
+        // 320×256 original at 4× (1280×1024).
+        bool widescreen = args.Contains("--widescreen");
+        int gameWidth = widescreen ? 456 : 320;
+        const int gameHeight = 256;
+        int scale = widescreen ? 3 : 4;
+
         // Initialize raylib
-        Raylib.InitWindow(GAME_WIDTH * SCALE, GAME_HEIGHT * SCALE, "Relander");
+        Raylib.InitWindow(gameWidth * scale, gameHeight * scale, "Relander");
         Raylib.SetTargetFPS(60);   // Display runs at 60 FPS for a smooth window
         Raylib.SetExitKey(KeyboardKey.Null);
 
         // Create game engine
         var random = new RandomGenerator();
-        var screen = new RaylibScreen(GAME_WIDTH, GAME_HEIGHT);
+        var screen = new RaylibScreen(gameWidth, gameHeight);
         var input = new RaylibInput();
         var engine = new GameEngine(random, screen);
 
@@ -37,12 +42,12 @@ public static class Program
         var palette = VidcColour.BuildPalette();
 
         // Create a texture for the game framebuffer
-        var image = Raylib.GenImageColor(GAME_WIDTH, GAME_HEIGHT, Color.Black);
+        var image = Raylib.GenImageColor(gameWidth, gameHeight, Color.Black);
         var texture = Raylib.LoadTextureFromImage(image);
         Raylib.UnloadImage(image);
 
         // RGBA buffer for texture upload
-        var rgbaBuffer = new byte[GAME_WIDTH * GAME_HEIGHT * 4];
+        var rgbaBuffer = new byte[gameWidth * gameHeight * 4];
 
         // Fixed-step accumulator: game logic advances in GAME_FRAME_SECONDS steps
         // while the display renders as fast as the target FPS allows.
@@ -103,8 +108,8 @@ public static class Program
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
 
-            var srcRect = new Rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT);
-            var dstRect = new Rectangle(0, 0, GAME_WIDTH * SCALE, GAME_HEIGHT * SCALE);
+            var srcRect = new Rectangle(0, 0, gameWidth, gameHeight);
+            var dstRect = new Rectangle(0, 0, gameWidth * scale, gameHeight * scale);
             Raylib.DrawTexturePro(texture, srcRect, dstRect, Vector2.Zero, 0f, Color.White);
 
             Raylib.EndDrawing();

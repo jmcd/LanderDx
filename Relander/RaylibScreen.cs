@@ -3,8 +3,10 @@ using Relander.Core.Interfaces;
 namespace Relander;
 
 /// <summary>
-/// Implements IScreen with a 320×256 byte[] framebuffer.
-/// Each byte is a palette index (0-255) in the original VIDC colour format.
+/// Implements IScreen with a byte[] framebuffer sized to the constructor
+/// arguments (default 320×256 — the original Mode 13 screen; the --widescreen
+/// frontend passes 456×256). Each byte is a palette index (0-255) in the
+/// original VIDC colour format.
 /// </summary>
 public class RaylibScreen : IScreen
 {

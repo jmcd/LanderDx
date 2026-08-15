@@ -7,6 +7,11 @@ namespace Relander.Tests;
 [TestFixture]
 public class ParticleTests
 {
+    // Projection reads the static Viewport; reset to the original 320×240 in
+    // case a widescreen test ran earlier in the (unordered) fixture sequence.
+    [SetUp]
+    public void ResetViewport() => Viewport.Configure(320, 240);
+
     private class TestScreen : IScreen
     {
         private readonly byte[] _fb = new byte[320 * 256];

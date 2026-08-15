@@ -3,17 +3,20 @@ namespace Relander.Core.Engine;
 /// <summary>
 /// Flat-shaded triangle rasterizer drawing into a byte[] framebuffer.
 /// Based on DrawTriangle from Lander.arm:9278-11502.
-/// The framebuffer is 320×240 bytes (play area), with each byte being a palette index.
+/// The framebuffer is playWidth × playHeight bytes (play area; 320×240 in the
+/// original), with each byte being a palette index.
 /// </summary>
 public class TriangleRasterizer
 {
     private readonly byte[] _framebuffer;
-    public const int WIDTH = 320;
-    public const int HEIGHT = 240;  // Below score bar
+    private readonly int _width;
+    private readonly int _height;
 
-    public TriangleRasterizer(byte[] framebuffer)
+    public TriangleRasterizer(byte[] framebuffer, int width = 320, int height = 240)
     {
         _framebuffer = framebuffer;
+        _width = width;
+        _height = height;
     }
 
     /// <summary>Clear the framebuffer to a given colour.</summary>
@@ -34,9 +37,9 @@ public class TriangleRasterizer
         if (y1 > y2) { (x1, x2) = (x2, x1); (y1, y2) = (y2, y1); }
 
         // Clip Y to screen bounds
-        if (y3 < 0 || y1 >= HEIGHT) return;
+        if (y3 < 0 || y1 >= _height) return;
         int yStart = global::System.Math.Max(y1, 0);
-        int yEnd = global::System.Math.Min(y3, HEIGHT - 1);
+        int yEnd = global::System.Math.Min(y3, _height - 1);
 
         // Compute slopes: dx/dy for the two long edges
         // Edge 1: (x1,y1) to (x3,y3) — the "long" edge
@@ -76,7 +79,7 @@ public class TriangleRasterizer
             float dx23 = (y3 != y2) ? (float)(x3 - x2) / (y3 - y2) : 0;
 
             // Top half: (x1,y1) to (x2,y2)
-            int yTopEnd = global::System.Math.Min(y2, HEIGHT - 1);
+            int yTopEnd = global::System.Math.Min(y2, _height - 1);
             for (int y = yStart; y <= yTopEnd; y++)
             {
                 int rowY = y - y1;
@@ -99,13 +102,13 @@ public class TriangleRasterizer
 
     private void DrawScanline(int y, int xLeft, int xRight, byte color)
     {
-        if (y < 0 || y >= HEIGHT) return;
+        if (y < 0 || y >= _height) return;
 
         int xStart = global::System.Math.Max(xLeft, 0);
-        int xEnd = global::System.Math.Min(xRight, WIDTH - 1);
+        int xEnd = global::System.Math.Min(xRight, _width - 1);
         if (xStart > xEnd) return;
 
-        int offset = y * WIDTH + xStart;
+        int offset = y * _width + xStart;
         int length = xEnd - xStart + 1;
         _framebuffer.AsSpan(offset, length).Fill(color);
     }

@@ -32,10 +32,17 @@ internal class TestInput : IGameInput
 /// </summary>
 internal class TestScreen : IScreen
 {
-    private readonly byte[] _fb = new byte[320 * 256];
+    private readonly byte[] _fb;
 
-    public int Width => 320;
-    public int Height => 256;
+    public int Width { get; }
+    public int Height { get; }
+
+    public TestScreen(int width = 320, int height = 256)
+    {
+        Width = width;
+        Height = height;
+        _fb = new byte[width * height];
+    }
 
     public Span<byte> GetFramebuffer() => _fb;
 
@@ -45,15 +52,15 @@ internal class TestScreen : IScreen
     /// Read a pixel at play-area coordinates where (0, 0) is the top-left of the play area
     /// (i.e. framebuffer row 16 offset by the 16-pixel score bar).
     /// </summary>
-    public byte GetPlayPixel(int x, int y) => _fb[(y + 16) * 320 + x];
+    public byte GetPlayPixel(int x, int y) => _fb[(y + 16) * Width + x];
 
     /// <summary>Count non-zero pixels in the entire play area (rows 16-255).</summary>
     public int CountNonZeroInPlayArea()
     {
         int count = 0;
-        for (int y = 16; y < 256; y++)
-            for (int x = 0; x < 320; x++)
-                if (_fb[y * 320 + x] != 0) count++;
+        for (int y = 16; y < Height; y++)
+            for (int x = 0; x < Width; x++)
+                if (_fb[y * Width + x] != 0) count++;
         return count;
     }
 }

@@ -3,22 +3,18 @@ namespace Relander.Core.Engine;
 /// <summary>
 /// Vertex projection from 3D camera-relative coordinates to screen space.
 /// Based on ProjectVertexOntoScreen from Lander.arm:7119-7492.
-/// screenX = 160 + x/z, screenY = 64 + y/z (perspective divide).
+/// screenX = centerX + x/z, screenY = 64 + y/z (perspective divide), where
+/// centerX follows the Viewport (160 at the original 320 width, 228 at 456).
 /// </summary>
 public static class Projection
 {
-    public const int SCREEN_CENTER_X = 160;
-    public const int SCREEN_CENTER_Y = 64;
-    public const int SCREEN_MAX_X = 319;
-    public const int SCREEN_MAX_Y = 239;  // Play area: rows 16-255, 0-indexed in buffer is 0-239 (rasterizer height = 240)
-
     /// <summary>
     /// Project a 3D camera-relative point to screen coordinates.
     /// Returns true if the point is in front of the camera and on screen.
     ///
     /// Uses the same math as the original: the 10-bit ratio from shift-and-subtract
     /// division is (x/z) * 1024, and pixel offset = ratio >> 2 = (x/z) * 256.
-    /// So: screenX = 160 + x * 256 / z, screenY = 64 + y * 256 / z
+    /// So: screenX = centerX + x * 256 / z, screenY = 64 + y * 256 / z
     /// </summary>
     public static bool Project(int x, int y, int z, out int screenX, out int screenY)
     {
@@ -38,8 +34,8 @@ public static class Projection
         int offsetX = (int)((long)x * 256 / z);
         int offsetY = (int)((long)y * 256 / z);
 
-        screenX = SCREEN_CENTER_X + offsetX;
-        screenY = SCREEN_CENTER_Y + offsetY;
+        screenX = Viewport.CenterX + offsetX;
+        screenY = Viewport.CENTER_Y + offsetY;
 
         return true;
     }
@@ -49,7 +45,7 @@ public static class Projection
     /// </summary>
     public static bool IsOnScreen(int screenX, int screenY)
     {
-        return (uint)screenX <= SCREEN_MAX_X && (uint)screenY <= SCREEN_MAX_Y;
+        return (uint)screenX <= Viewport.MaxX && (uint)screenY <= Viewport.MaxY;
     }
 
 }

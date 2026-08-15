@@ -315,7 +315,7 @@ public class RenderingTests
     {
         private readonly byte[] _fb = new byte[320 * 256];
         public int Width => 320;
-        public int Height => 240;
+        public int Height => 256;  // full screen incl. 16-row score bar (the buffer is 320×256)
         public Span<byte> GetFramebuffer() => _fb;
         public void Present() { }
         public void Clear(byte color = 0) => Array.Clear(_fb);
