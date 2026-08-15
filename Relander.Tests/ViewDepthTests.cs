@@ -228,12 +228,11 @@ public class ViewDepthTests
 
         Assert.That(engine.ExtraDepthTiles, Is.EqualTo(0));
 
-        engine.CycleViewDepth();
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(4));
-        engine.CycleViewDepth();
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(8));
-        engine.CycleViewDepth();
-        Assert.That(engine.ExtraDepthTiles, Is.EqualTo(12));
+        foreach (int preset in new[] { 4, 8, 12, 16, 20, 24 })
+        {
+            engine.CycleViewDepth();
+            Assert.That(engine.ExtraDepthTiles, Is.EqualTo(preset));
+        }
         engine.CycleViewDepth();
         Assert.That(engine.ExtraDepthTiles, Is.EqualTo(0));
 

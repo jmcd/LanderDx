@@ -21,10 +21,10 @@ public class GameEngine
     private int _viewWidthIndex;
 
     /// <summary>View depth presets cycled by the C key (extra tile rows beyond the original grid).</summary>
-    private static readonly int[] ViewDepthPresets = { 0, 4, 8, 12 };
+    private static readonly int[] ViewDepthPresets = { 0, 4, 8, 12, 16, 20, 24 };
 
     /// <summary>View width presets cycled by the X key (extra tile columns per side).</summary>
-    private static readonly int[] ViewWidthPresets = { 0, 4, 8, 12 };
+    private static readonly int[] ViewWidthPresets = { 0, 4, 8, 12, 16, 20, 24 };
 
     private readonly LandscapeGenerator _landscape;
     private readonly ObjectMap _objectMap;
@@ -80,8 +80,9 @@ public class GameEngine
     }
 
     /// <summary>
-    /// Cycle the view depth presets: original → +4 → +8 → +12 → original
-    /// (C key, a deliberate deviation from the original — opt-in only).
+    /// Cycle the view depth presets: original → +4 → +8 → +12 → +16 → +20 →
+    /// +24 → original (C key, a deliberate deviation from the original —
+    /// opt-in only).
     /// </summary>
     public void CycleViewDepth()
     {
@@ -90,8 +91,8 @@ public class GameEngine
     }
 
     /// <summary>
-    /// Cycle the view width presets: original → +4 → +8 → +12 columns per side
-    /// → original (X key, opt-in like the depth extension).
+    /// Cycle the view width presets: original → +4 → +8 → +12 → +16 → +20 →
+    /// +24 columns per side → original (X key, opt-in like the depth extension).
     /// </summary>
     public void CycleViewWidth()
     {

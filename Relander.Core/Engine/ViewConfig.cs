@@ -25,8 +25,10 @@ public sealed class ViewConfig
     public const int MAX_EXTRA_DEPTH_TILES = 100;
 
     /// <summary>Maximum extra tile columns per side (bounds corner-store size and
-    /// per-frame triangle cost; the rasterizer clips anything off-screen anyway).</summary>
-    public const int MAX_EXTRA_WIDTH_COLS = 16;
+    /// per-frame triangle cost; the rasterizer clips anything off-screen anyway,
+    /// and the packed-particle 12-bit x field allows screen coords up to 4095 —
+    /// front-row corners reach ±(5.5+M)×256/10 px, far below that at M = 32).</summary>
+    public const int MAX_EXTRA_WIDTH_COLS = 32;
 
     /// <summary>Extra tile-corner rows added at the far end of the grid (0 = original view).</summary>
     public int ExtraDepthTiles { get; }

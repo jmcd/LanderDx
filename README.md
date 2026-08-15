@@ -303,8 +303,8 @@ Keyboard controls (mapped from the original's mouse):
 | M | Full thrust |
 | H | Hover |
 | N | Fire bullets |
-| C | Cycle view depth (Original → +4 → +8 → +12 extra rows) |
-| X | Cycle view width (Original → +4 → +8 → +12 extra columns per side) |
+| C | Cycle view depth (Original → +4 → +8 → +12 → +16 → +20 → +24 extra rows) |
+| X | Cycle view width (Original → +4 → +8 → +12 → +16 → +20 → +24 extra columns per side) |
 | P | Toggle coordinate display |
 | Escape | Quit |
 
@@ -321,8 +321,8 @@ The conversion uses a single `byte[320×256]` framebuffer. The top 16 pixel rows
 3. **Sound**: None (original had no sound either)
 4. **Game over**: The original blocks until a key press before restarting; the port shows the same message and waits for a key
 5. **Minimap**: A Zarch/Virus-inspired radar overlay (Tab/R to toggle) has no original counterpart. Orientation matches the 3D view (+x right, far +z at the top like the horizon) and coordinates wrap with the 256-tile periodic world
-6. **View depth**: An opt-in deviation — pressing C cycles the visible landscape depth (Original → +4 → +8 → +12 extra tile-corner rows). The extra far rows sample terrain behind the camera tile and use the darkest brightness shade, the same fix as the original's BigLander variant (Lander.arm `big-landscape` branch: `SUBS R8, R8, #TILES_Z-11` / `MOVLT R8, #0`). The default is the original 11-corner-row view and extended modes are never enabled without the key; the original rows render identically in every mode
-7. **View width**: An opt-in deviation — pressing X cycles the visible landscape width (Original → +4 → +8 → +12 extra tile columns per side). The extra columns keep the original columns at their exact world positions, and the particle/rock side-culling bound follows the extended width. The two extensions are independent and combine freely
+6. **View depth**: An opt-in deviation — pressing C cycles the visible landscape depth (Original → +4 → +8 → +12 → +16 → +20 → +24 extra tile-corner rows). The extra far rows sample terrain behind the camera tile and use the darkest brightness shade, the same fix as the original's BigLander variant (Lander.arm `big-landscape` branch: `SUBS R8, R8, #TILES_Z-11` / `MOVLT R8, #0`). The default is the original 11-corner-row view and extended modes are never enabled without the key; the original rows render identically in every mode
+7. **View width**: An opt-in deviation — pressing X cycles the visible landscape width (Original → +4 → +8 → +12 → +16 → +20 → +24 extra tile columns per side). The extra columns keep the original columns at their exact world positions, and the particle/rock side-culling bound follows the extended width. The two extensions are independent and combine freely
 8. **Coordinate display**: An opt-in deviation — pressing P toggles the ship's position in the score bar in player-facing terms (e.g. `X 123.4 Y 45.6 Alt 5.2`): X and Y are the ground axes (the game's world X and Z) and wrap with the 256-tile periodic world so the launchpad always reads as tiles 0-8 on both axes; Alt is the height above the terrain directly below the ship (positive up, ~0.4 on the pad) and never wraps. Off by default
 9. **Widescreen**: An opt-in deviation — launch with `--widescreen` (`dotnet run --project Relander -- --widescreen`) to render a 456×256 framebuffer in a 1368×768 window (16:9; play area 456×240). The HUD anchors to the wider screen: lives and high-score digits move to the right edge, the fuel bar spans the full width, the mini-map inset sits at the top-right, and the game-over message stays centred. The ship's world x=0 still projects to screen centre (now x=228), and the original 12-tile-wide landscape grid leaves roughly 75 px of black margin at each side of the bottom of the view until the X key adds columns. The mode is fixed at startup and cannot be toggled in-game. Without the flag the game is the original 320×256, byte-identical
 
