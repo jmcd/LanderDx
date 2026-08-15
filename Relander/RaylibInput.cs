@@ -8,6 +8,7 @@ public class RaylibInput : IGameInput
     private bool _toggleMapLatched = false;
     private bool _viewDepthLatched = false;
     private bool _viewWidthLatched = false;
+    private bool _coordsLatched = false;
 
     /// <summary>
     /// Must be called every frame of the Raylib window loop (60 Hz) to latch
@@ -26,6 +27,10 @@ public class RaylibInput : IGameInput
         if (Raylib.IsKeyPressed(KeyboardKey.X))
         {
             _viewWidthLatched = true;
+        }
+        if (Raylib.IsKeyPressed(KeyboardKey.P))
+        {
+            _coordsLatched = true;
         }
     }
 
@@ -69,6 +74,17 @@ public class RaylibInput : IGameInput
     {
         bool val = _viewWidthLatched || Raylib.IsKeyPressed(KeyboardKey.X);
         _viewWidthLatched = false;
+        return val;
+    }
+
+    /// <summary>
+    /// Toggle the HUD coordinate display (key P): latched across display frames
+    /// like the other presentation toggles.
+    /// </summary>
+    public bool ConsumeCoordsToggle()
+    {
+        bool val = _coordsLatched || Raylib.IsKeyPressed(KeyboardKey.P);
+        _coordsLatched = false;
         return val;
     }
 

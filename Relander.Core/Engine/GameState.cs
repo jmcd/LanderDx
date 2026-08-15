@@ -65,6 +65,7 @@ public class GameState
     // latches max(highScore, currentScore) — Initialize must not reset it.
     public int HighScore = FixedPoint.INITIAL_HIGH_SCORE;
     public int MapMode; // 0 = Inset Mini-Map, 1 = Full 256x256 Overlay, 2 = Hidden
+    public bool ShowCoords; // HUD coordinate display (P key) — opt-in, no original counterpart
 
     // ---- Camera ----
     public int XCamera, YCamera, ZCamera;

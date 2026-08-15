@@ -97,6 +97,14 @@ public class GameEngine
         SetExtraWidth(ViewWidthPresets[_viewWidthIndex]);
     }
 
+    /// <summary>
+    /// Toggle the HUD coordinate display (P key, opt-in — off by default).
+    /// </summary>
+    public void ToggleCoords()
+    {
+        _state.ShowCoords = !_state.ShowCoords;
+    }
+
     public GameEngine(IRandomSource random, IScreen screen, ViewConfig? viewConfig = null)
     {
         _state = new GameState();
@@ -541,6 +549,15 @@ public class GameEngine
         // Col 35 (x = 280): High score
         string highStr = _state.HighScore.ToString();
         SystemFont.DrawString(screenBuf, stride, 280, 8, highStr, white);
+
+        // 3. Coordinate display (P key, opt-in — no original counterpart): ship
+        // tile coordinates in the empty middle of text row 1, wrapped to the
+        // 256-tile periodic world so the launchpad always reads as 0..8.
+        if (_state.ShowCoords)
+        {
+            SystemFont.DrawString(screenBuf, stride, 48, 8,
+                CoordDisplay.FormatHud(_state.XPlayer, _state.ZPlayer), white);
+        }
     }
 
     private void CopyToScreen()

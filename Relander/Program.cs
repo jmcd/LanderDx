@@ -54,12 +54,14 @@ public static class Program
         {
             input.PollEvents();
 
-            // View depth/width toggles (C/X): presentation options handled at
-            // the display rate, between game ticks.
+            // View depth/width toggles (C/X) and the coordinate display (P):
+            // presentation options handled at the display rate, between game ticks.
             if (input.ConsumeViewDepthToggle())
                 engine.CycleViewDepth();
             if (input.ConsumeViewWidthToggle())
                 engine.CycleViewWidth();
+            if (input.ConsumeCoordsToggle())
+                engine.ToggleCoords();
 
             accumulator += Raylib.GetFrameTime();
             // After a long display stall (window drag/freeze) the accumulator
