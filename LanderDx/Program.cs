@@ -17,9 +17,9 @@ public static class Program
     {
         // The default is the enhanced widescreen mode: a 456×256 framebuffer
         // (16:9, 456×240 play area) at 3× scale (1368×768) with the maximum
-        // view size baked in. --fullscreen selects the original 320×256
+        // view size baked in. --original selects the original 320×256
         // resolution (the untouched byte-identical view) at 4× (1280×1024).
-        bool original = args.Contains("--fullscreen");
+        bool original = args.Contains("--original");
         int gameWidth = original ? 320 : 456;
         const int gameHeight = 256;
         int scale = original ? 4 : 3;
@@ -30,7 +30,7 @@ public static class Program
         Raylib.SetExitKey(KeyboardKey.Null);
 
         // Create game engine. The widescreen default bakes in the maximum view
-        // at startup (no runtime view toggles); --fullscreen uses the original.
+        // at startup (no runtime view toggles); --original uses the original.
         var random = new RandomGenerator();
         var screen = new RaylibScreen(gameWidth, gameHeight);
         var input = new RaylibInput();
